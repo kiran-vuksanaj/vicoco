@@ -12,6 +12,15 @@ from os import environ
 
 import csv
 
+file_dump_waves = """
+`timescale 1ns / 1ps
+module cocotb_vivado_dump();
+  initial begin
+    $dumpfile("{build_dir}/dumpwav.vcd");
+    $dumpvars(0,{toplevel});
+  end
+endmodule
+"""
 
 class Vivado(cocotb.runner.Simulator):
 
@@ -149,7 +158,8 @@ class Vivado(cocotb.runner.Simulator):
                     module_name = row[0]
                     library_name = row[2]
                     module_name = module_name[:module_name.index('.')]
-                    self.elab_modules.append(f"{library_name}.{module_name}")
+                    if module_name != ip_name:
+                        self.elab_modules.append(f"{library_name}.{module_name}")
                     # ip_cmds.append ( self._file_info_to_parse(row,xsim_script_root) )
 
             
@@ -158,7 +168,7 @@ class Vivado(cocotb.runner.Simulator):
 
             if vhdl_proj.exists():
                 print("VHDL project EXISTS!")
-                ip_cmds.append( ['xvhdl','--incr','--relax','-prj',str(vhdl_proj)] + self._get_include_options(self.includes) )
+                ip_cmds.append( ['xvhdl','--incr','--relax','-prj',str(vhdl_proj)] )
             else:
                 print("NO VHDL")
             if vlog_proj.exists():
@@ -177,10 +187,27 @@ class Vivado(cocotb.runner.Simulator):
             out.extend(['-i',str(incl)])
         return out
 
+    def _write_wavedump_file(self):
+
+        toplevel = self.hdl_toplevel
+        if "." in toplevel:
+            toplevel = toplevel.split(".")[-1]
+        
+        file_text = file_dump_waves.format(build_dir=self.build_dir,toplevel=toplevel)
+        file_name = self.build_dir / "cocotb_vivado_dump.v"
+        with open(file_name,'w') as f:
+            f.write(file_text)
+
+        self.elab_modules.append("work.cocotb_vivado_dump")
+        self.sources.append(file_name)
+    
     def _build_command(self) -> Sequence[Command]:
 
         self.xilinx_libraries = set()
         self.elab_modules = []
+
+        if self.waves:
+            self._write_wavedump_file()
         
         cmds = []
 
@@ -214,10 +241,6 @@ class Vivado(cocotb.runner.Simulator):
                     "-top", self.hdl_toplevel,
                     "-snapshot", "pybound_sim",
                     ] + self._get_include_options(self.includes)
-
-        # for elab_module in self.elab_modules:
-        #     if (elab_module==self.hdl_toplevel or elab_module==f"work.{self.hdl_toplevel}"):
-        #         self.elab_modules.remove(elab_module)
 
         elab_cmd.extend(self.elab_modules)
 
