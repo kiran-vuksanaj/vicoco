@@ -33,10 +33,10 @@ def test_cordictb():
     proj_path = Path(__file__).resolve().parent
     sources = [proj_path / "../hdl/cordic_wrap.sv", proj_path / "../ip/cordic_0/cordic_0.xci"]
     sim = "vivado"
-    hdl_toplevel_lang = "vhdl"
-    toplevel = "xil_defaultlib.cordic_0"
-    # hdl_toplevel_lang = "verilog"
-    # toplevel = "cordic_wrap"
+    # hdl_toplevel_lang = "vhdl"
+    # toplevel = "xil_defaultlib.cordic_0"
+    hdl_toplevel_lang = "verilog"
+    toplevel = "cordic_wrap"
     runner = get_runner(sim)
 
     runner.build(
