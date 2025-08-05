@@ -22,7 +22,7 @@ def test_fft_tb():
 
     proj_path = Path(__file__).resolve().parent
     sources = [proj_path / "../hdl" / "xfft_wrap.v",
-               proj_path / "../ip/xfft_0/xfft_0.xci"
+               proj_path / "../ip/Vivado_2024_2/xfft_0/xfft_0.xci"
                ]
     sim = "vivado"
     hdl_toplevel_lang = "verilog"

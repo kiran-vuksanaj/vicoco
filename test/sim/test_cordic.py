@@ -31,7 +31,7 @@ async def simple_timers(dut):
 def test_cordictb():
     tb_name = "test_cordic"
     proj_path = Path(__file__).resolve().parent
-    sources = [proj_path / "../hdl/cordic_wrap.sv", proj_path / "../ip/cordic_0/cordic_0.xci"]
+    sources = [proj_path / "../hdl/cordic_wrap.sv", proj_path / "../ip/Vivado_2024_2/cordic_0/cordic_0.xci"]
     sim = "vivado"
     # hdl_toplevel_lang = "vhdl"
     # toplevel = "xil_defaultlib.cordic_0"

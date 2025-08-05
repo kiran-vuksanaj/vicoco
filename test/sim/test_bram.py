@@ -25,7 +25,7 @@ def test_bramtb():
 
     tb_name = file_path.stem
     proj_path = file_path.parent.parent
-    sources = [proj_path / "ip/blk_mem_kilobyte/blk_mem_kilobyte.xci",
+    sources = [proj_path / "ip/Vivado_2024_2/blk_mem_kilobyte/blk_mem_kilobyte.xci",
                proj_path / "hdl" / "bram_wrap.sv"
                ]
     sim = "vivado"

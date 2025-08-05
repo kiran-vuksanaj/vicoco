@@ -58,7 +58,7 @@ def test_fifotb():
 
     tb_name = file_path.stem
     proj_path = file_path.parent.parent
-    sources = [proj_path / "ip/fifo_dut_sync/fifo_dut_sync.xci",
+    sources = [proj_path / "ip/Vivado_2024_2/fifo_dut_sync/fifo_dut_sync.xci",
                proj_path / "hdl" / "fifo_wrap.sv"
                ]
     sim = "vivado"
