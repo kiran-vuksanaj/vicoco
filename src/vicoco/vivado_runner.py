@@ -28,6 +28,7 @@ class Vivado(cocotb.runner.Simulator):
 
     def __init__(self,mode):
         self.launch_mode = mode
+        self.xilinx_libraries = set()
         super().__init__()
     
     @staticmethod
@@ -146,8 +147,6 @@ class Vivado(cocotb.runner.Simulator):
                 for row in reader:
                     library_name = row[2]
                     self.xilinx_libraries.add( library_name )
-            self.xilinx_libraries.add( 'xpm' )
-            self.xilinx_libraries.add( 'secureip' )
 
             xsim_script_root = ip_user_root / 'sim_scripts' / ip_name / 'xsim'
 
@@ -203,8 +202,13 @@ class Vivado(cocotb.runner.Simulator):
     
     def _build_command(self) -> Sequence[Command]:
 
-        self.xilinx_libraries = set()
         self.elab_modules = []
+
+        self.xilinx_libraries.add( 'xpm' )
+        self.xilinx_libraries.add( 'secureip' )
+
+        print(self.xilinx_libraries)
+
 
         if self.waves:
             self._write_wavedump_file()
