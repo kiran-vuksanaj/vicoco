@@ -16,7 +16,7 @@ file_dump_waves = """
 `timescale 1ns / 1ps
 module cocotb_vivado_dump();
   initial begin
-    $dumpfile("{build_dir}/dumpwav.vcd");
+    $dumpfile("{build_dir}/{toplevel}.vcd");
     $dumpvars(0,{toplevel});
   end
 endmodule
@@ -199,9 +199,18 @@ class Vivado(cocotb.runner.Simulator):
 
         self.elab_modules.append("work.cocotb_vivado_dump")
         self.sources.append(file_name)
-    
+
+    def _define_args(self) -> Sequence[str]:
+
+        out = []
+        for key,val in self.defines.items():
+            out.extend(['-d',f'{key}={val}'])
+        return out
+        
     def _build_command(self) -> Sequence[Command]:
 
+        define_args = self._define_args()
+        
         self.elab_modules = []
 
         self.xilinx_libraries.add( 'xpm' )
@@ -219,9 +228,9 @@ class Vivado(cocotb.runner.Simulator):
         for source in self.sources:
             if cocotb.runner.is_verilog_source(source):
                 # TODO maybe should be redone for a .v file ending?
-                cmds.append(['xvlog','-sv', str(source)] + self._get_include_options(self.includes))
+                cmds.append(['xvlog','-sv', str(source)] + self._get_include_options(self.includes) + define_args)
             elif cocotb.runner.is_vhdl_source(source):
-                cmds.append(['xvhdl', str(source)] + self._get_include_options(self.includes))
+                cmds.append(['xvhdl', str(source)] + self._get_include_options(self.includes) + define_args)
             elif ".xci" in str(source):
                 # JANK as fuck
                 ip_sources.append(str(source))
@@ -244,7 +253,7 @@ class Vivado(cocotb.runner.Simulator):
         elab_cmd = ["xelab",
                     "-top", self.hdl_toplevel,
                     "-snapshot", "pybound_sim",
-                    ] + self._get_include_options(self.includes)
+                    ] + self._get_include_options(self.includes) + define_args
 
         elab_cmd.extend(self.elab_modules)
 

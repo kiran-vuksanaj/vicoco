@@ -34,9 +34,20 @@ module hdmi_pipeline(
   logic                new_frame; //one cycle active indicator of new frame of info!
   logic [5:0]          frame_count; //0 to 59 then rollover frame counter
 
-   //written by you! (make sure you include in your hdl)
-   //default instantiation so making signals for 720p
-  video_sig_gen mvg(
+  video_sig_gen 
+`ifdef SMALLSCREEN_SIM
+    #(
+    .ACTIVE_H_PIXELS(40),
+    .H_FRONT_PORCH(5),
+    .H_SYNC_WIDTH(10),
+    .H_BACK_PORCH(10),
+    .ACTIVE_LINES(30),
+    .V_FRONT_PORCH(2),
+    .V_SYNC_WIDTH(3),
+    .V_BACK_PORCH(5)
+  )
+`endif
+    mvg(
 		.clk_pixel_in(clk_pixel),
 		.rst_in(sys_rst),
 		.hcount_out(hcount),

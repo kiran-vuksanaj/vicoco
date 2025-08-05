@@ -5,6 +5,8 @@ from cocotb.triggers import Timer
 from cocotb.clock import Clock
 
 from model.ClockWiz import ClockWiz
+# from model.HDMIMonitor import HDMIMonitor
+
 
 @cocotb.test()
 async def simple_launch(dut):
@@ -17,7 +19,9 @@ async def simple_launch(dut):
 
     cocotb.start_soon( Clock(dut.clk_100mhz,10,'ns').start() )
     cocotb.start_soon( wizard.start() )
-    
+
+    # hdmi_monitor = HDMIMonitor(dut,'hdmi',dut.clk_pixel,dut.clk_5x)
+
     rst = dut.sys_rst
     rst.value = 0
     await Timer(30,'ns')
@@ -26,7 +30,7 @@ async def simple_launch(dut):
     rst.value = 0
 
     
-    await Timer(1000,'ns')
+    await Timer(50,'us')
 
 
 
@@ -48,6 +52,7 @@ def test_hdmi_pipeline():
                proj_path / "hdl" / "hdmi" / "video_sig_gen.sv",
                proj_path / "hdl" / "hdmi" / "hdmi_clk_wiz.v"]
 
+    defines = {"SMALLSCREEN_SIM":1}
 
     sim = "vivado"
 
@@ -63,6 +68,7 @@ def test_hdmi_pipeline():
         hdl_toplevel=toplevel,
         always=True,
         timescale=('1ns','1ps'),
+        defines=defines,
         waves=True)
     runner.test(
         hdl_toplevel=toplevel,
