@@ -5,11 +5,12 @@ Following closely in the footsteps of themperek's [cocotb-vivado](github.com/the
 
 ### Getting things running
 * make sure you have Python installed in such a way that libpython / the `<Python.h>` file exists; from `apt`, this might look like installing `python3-dev`. If you have cocotb running, this should already be handled.
-* make sure you have Vivado (2024.2 is what I've been building for) installed, and its paths etc. added to your terminal: your `.bashrc` might need a line like
+* make sure you have Vivado (default in these tests is 2025.1, but tests also work in 2024.2) installed, and its paths etc. added to your terminal: your `.bashrc` might need a line like
 ``` sh
-source /tools/Xilinx/Vivado/2024.2/settings64.sh
+source /tools/Xilinx/2025.1/Vivado/settings64.sh
 ```
-(modified if you have Vivado stored in a different place)
+(if using another version of Vivado or a different install location, locate Vivado's `settings64.sh` file)
+
 * make a virtual environment with cocotb in it (only need to do once)
 
 ``` sh
@@ -17,10 +18,35 @@ python3 -m venv venv
 source venv/bin/activate
 pip3 install -e .
 ```
-* run the tests here:
+* if running this repository's tests, also install the requirements from `tb_environment.txt`
 
 ``` sh
-pytest -s test/
+pip3 install -r tb_environment.txt
+```
+
+* with the virtual environment activated, run the tests:
+
+``` sh
+pytest -s
+```
+
+if using Vivado 2024.2, add a `VIVADO_VERSION` environment variable to that launch command.:
+
+``` sh
+VIVADO_VERSION=2024.2 pytest -s
+```
+
+
+
+In brief, the following commands should get you up and running the first time:
+
+``` sh
+source /tools/Xilinx/2025.1/Vivado/settings64.sh
+python3 -m venv venv
+source venv/bin/activate
+pip3 install -e .
+pip3 install -r tb_environment.txt
+pytest -s
 ```
 
 ### submodules here
