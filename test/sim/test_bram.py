@@ -18,6 +18,7 @@ async def clocks_only(dut):
 
 from vicoco.vivado_runner import get_runner
 from pathlib import Path
+import os
 
 def test_bramtb():
 
@@ -25,7 +26,12 @@ def test_bramtb():
 
     tb_name = file_path.stem
     proj_path = file_path.parent.parent
-    sources = [proj_path / "ip/Vivado_2024_2/blk_mem_kilobyte/blk_mem_kilobyte.xci",
+
+    vivado_version = os.getenv("VIVADO_VERSION","2025.1")
+    vivado_version_directory = "Vivado_"+vivado_version.replace(".","_")
+
+
+    sources = [proj_path / "ip" / vivado_version_directory / "blk_mem_kilobyte/blk_mem_kilobyte.xci",
                proj_path / "hdl" / "bram_wrap.sv"
                ]
     sim = "vivado"

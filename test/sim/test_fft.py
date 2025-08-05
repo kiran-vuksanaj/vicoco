@@ -8,6 +8,7 @@ from pathlib import Path
 
 # from cocotb.runner import get_runner
 from vicoco.vivado_runner import get_runner
+import os
 
 from cocotb.clock import Clock
 import pytest
@@ -21,8 +22,12 @@ def test_fft_tb():
     tb_name = "test_fft"
 
     proj_path = Path(__file__).resolve().parent
+
+    vivado_version = os.getenv("VIVADO_VERSION","2025.1")
+    vivado_version_directory = "Vivado_"+vivado_version.replace(".","_")
+    
     sources = [proj_path / "../hdl" / "xfft_wrap.v",
-               proj_path / "../ip/Vivado_2024_2/xfft_0/xfft_0.xci"
+               proj_path / "../ip/" / vivado_version_directory / "xfft_0/xfft_0.xci"
                ]
     sim = "vivado"
     hdl_toplevel_lang = "verilog"
