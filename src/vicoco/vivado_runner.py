@@ -16,7 +16,7 @@ file_dump_waves = """
 `timescale 1ns / 1ps
 module cocotb_vivado_dump();
   initial begin
-    $dumpfile("{build_dir}/{toplevel}.vcd");
+    $dumpfile("{waveform_filename}");
     $dumpvars(0,{toplevel});
   end
 endmodule
@@ -29,6 +29,7 @@ class Vivado(cocotb.runner.Simulator):
     def __init__(self,mode):
         self.launch_mode = mode
         self.xilinx_libraries = set()
+        self.fst_output = True
         super().__init__()
     
     @staticmethod
@@ -191,8 +192,13 @@ class Vivado(cocotb.runner.Simulator):
         toplevel = self.hdl_toplevel
         if "." in toplevel:
             toplevel = toplevel.split(".")[-1]
+
+        self.waveform_filename = str(self.build_dir / f'{toplevel}.vcd')
+        if self.fst_output:
+            self.waveform_filename = self.waveform_filename.replace('.vcd','.fst')
+        print(f"waveform output to {self.waveform_filename}")
         
-        file_text = file_dump_waves.format(build_dir=self.build_dir,toplevel=toplevel)
+        file_text = file_dump_waves.format(waveform_filename=self.waveform_filename,toplevel=toplevel)
         file_name = self.build_dir / "cocotb_vivado_dump.v"
         with open(file_name,'w') as f:
             f.write(file_text)
@@ -284,6 +290,9 @@ class Vivado(cocotb.runner.Simulator):
         self.env["TOPLEVEL_LANG"] = self.hdl_toplevel_lang
         self.env["XSIM_INTERFACE"] = self.launch_mode
 
+        if self.waves and self.fst_output:
+            cmd.append(["vcd2fst", self.waveform_filename, self.waveform_filename])
+        
         return cmd
 
     def _get_parameter_options(self, paramters: Mapping[str, object]) -> Command:
