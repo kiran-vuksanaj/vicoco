@@ -43,7 +43,9 @@ def test_cordictb():
     # toplevel = "xil_defaultlib.cordic_0"
     hdl_toplevel_lang = "verilog"
     toplevel = "cordic_wrap"
-    runner = get_runner(sim)
+
+    xilinx_root = "/tools/Xilinx/2025.1/Vivado"
+    runner = get_runner(sim,xilinx_root=xilinx_root)
 
     runner.build(
         sources=sources,

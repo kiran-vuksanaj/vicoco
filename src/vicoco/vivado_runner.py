@@ -26,17 +26,27 @@ class Vivado(cocotb.runner.Simulator):
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
 
-    def __init__(self,mode):
+    def __init__(self,mode,xilinx_root=None):
         self.launch_mode = mode
         self.xilinx_libraries = set()
         self.fst_output = True
+
+        if xilinx_root is not None:
+            self.xilinx_root = xilinx_root
+        else:
+            self.xilinx_root = environ.get('XILINX_VIVADO',None)
+            
+        
         super().__init__()
     
-    @staticmethod
-    def _simulator_in_path() -> None:
-        if 'XILINX_VIVADO' not in environ:
-            raise SystemExit("ERROR: Vivado not found. Run {VIVADO}/settings64.sh if you haven't already.")
+    def _simulator_in_path(self) -> None:
+        # if 'XILINX_VIVADO' not in environ:
+        if self.xilinx_root is None:
+            raise Warning("WARNING: Vivado not found in path. Run {VIVADO}/settings64.sh if you haven't, or specify get_runner('vivado',xilinx_root={INSTALL_DIRECTORY}).")
 
+    def _full_path(self,vivado_cmd):
+        return str(Path(self.xilinx_root) / 'bin' / vivado_cmd)
+        
     def _file_info_to_parse(self, file_info,working_dir):
         """
         converts list of traits as written in a "file_info.txt" file to a command to compile the file
@@ -51,11 +61,11 @@ class Vivado(cocotb.runner.Simulator):
 
         language = language.lower()
         if language == "systemverilog":
-            cmd += ['xvlog', '-sv']
+            cmd += [self._full_path('xvlog'), '-sv']
         elif language == "verilog":
-            cmd += ['xvlog']
+            cmd += [self._full_path('xvlog')]
         elif language == "vhdl":
-            cmd += ['xvhdl']
+            cmd += [self._full_path('xvhdl')]
 
         cmd += ['-work',f'{output_lib}=xsim.dir/{output_lib}']
 
@@ -124,7 +134,7 @@ class Vivado(cocotb.runner.Simulator):
                 for xci_path in outdated_xci_files:
                     f.write(f"read_ip {xci_path}\n")
                 f.write("export_ip_user_files\n")
-            self._execute( [['vivado', '-mode', 'batch', '-source', 'build_ip.tcl']], cwd=self.build_dir)
+            self._execute( [[self._full_path('vivado'), '-mode', 'batch', '-source', 'build_ip.tcl']], cwd=self.build_dir)
 
 
         for xci_filename in xci_files:
@@ -167,15 +177,9 @@ class Vivado(cocotb.runner.Simulator):
             vlog_proj = xsim_script_root / 'vlog.prj'
 
             if vhdl_proj.exists():
-                print("VHDL project EXISTS!")
-                ip_cmds.append( ['xvhdl','--incr','--relax','-prj',str(vhdl_proj)] )
-            else:
-                print("NO VHDL")
+                ip_cmds.append( [self._full_path('xvhdl'),'--incr','--relax','-prj',str(vhdl_proj)] )
             if vlog_proj.exists():
-                print("VERILOG PROJECT EXISTS!")
-                ip_cmds.append( ['xvlog','--incr','--relax','-prj',str(vlog_proj)] + self._get_include_options(self.includes) )
-            else:
-                print("no VERILOG")
+                ip_cmds.append( [self._full_path('xvlog'),'--incr','--relax','-prj',str(vlog_proj)] + self._get_include_options(self.includes) )
 
             # ip_cmds.append( ['sh','-c', f"cd {xsim_script_root} && ./{ip_name}.sh -step compile"] )
 
@@ -234,9 +238,9 @@ class Vivado(cocotb.runner.Simulator):
         for source in self.sources:
             if cocotb.runner.is_verilog_source(source):
                 # TODO maybe should be redone for a .v file ending?
-                cmds.append(['xvlog','-sv', str(source)] + self._get_include_options(self.includes) + define_args)
+                cmds.append([self._full_path('xvlog'),'-sv', str(source)] + self._get_include_options(self.includes) + define_args)
             elif cocotb.runner.is_vhdl_source(source):
-                cmds.append(['xvhdl', str(source)] + self._get_include_options(self.includes) + define_args)
+                cmds.append([self._full_path('xvhdl'), str(source)] + self._get_include_options(self.includes) + define_args)
             elif ".xci" in str(source):
                 # JANK as fuck
                 ip_sources.append(str(source))
@@ -256,7 +260,7 @@ class Vivado(cocotb.runner.Simulator):
 
         self.snapshot_name = "pybound_sim"
 
-        elab_cmd = ["xelab",
+        elab_cmd = [self._full_path("xelab"),
                     "-top", self.hdl_toplevel,
                     "-snapshot", "pybound_sim",
                     ] + self._get_include_options(self.includes) + define_args
@@ -284,7 +288,7 @@ class Vivado(cocotb.runner.Simulator):
             ["python3", "-m", "vicoco"]
         ]
 
-        xilinx_root = environ['XILINX_VIVADO']
+        xilinx_root = self.xilinx_root
         self.env["LD_LIBRARY_PATH"] = f"{xilinx_root}/lib/lnx64.o:{xilinx_root}/lib/lnx64.o/Default:"
         self.env["VIVADO_SNAPSHOT_NAME"] = "pybound_sim"
         self.env["TOPLEVEL_LANG"] = self.hdl_toplevel_lang
@@ -300,13 +304,13 @@ class Vivado(cocotb.runner.Simulator):
         return []
         
 
-def get_runner(simulator_name: str) -> cocotb.runner.Simulator:
+def get_runner(simulator_name: str, **kwargs) -> cocotb.runner.Simulator:
     """
     this is... pretty jank. manually add 'vivado' to the list of supported sims
     """
 
     if simulator_name == "vivado":
-        return Vivado('XSI')
+        return Vivado('XSI',**kwargs)
     elif simulator_name == "vivado_tcl":
         return Vivado('TCL')
     else:
