@@ -62,11 +62,11 @@ class Vivado(cocotb.runner.Simulator):
 
         language = language.lower()
         if language == "systemverilog":
-            cmd += [self._full_path('xvlog'), '-sv']
+            cmd += [self._full_path('xvlog'), '-sv', '--incr', '--relax']
         elif language == "verilog":
-            cmd += [self._full_path('xvlog')]
+            cmd += [self._full_path('xvlog'), '--incr', '--relax']
         elif language == "vhdl":
-            cmd += [self._full_path('xvhdl')]
+            cmd += [self._full_path('xvhdl'), '--incr', '--relax']
 
         cmd += ['-work',f'{output_lib}=xsim.dir/{output_lib}']
 
@@ -239,9 +239,9 @@ class Vivado(cocotb.runner.Simulator):
         for source in self.sources:
             if cocotb.runner.is_verilog_source(source):
                 # TODO maybe should be redone for a .v file ending?
-                cmds.append([self._full_path('xvlog'),'-sv', str(source)] + self._get_include_options(self.includes) + define_args)
+                cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args)
             elif cocotb.runner.is_vhdl_source(source):
-                cmds.append([self._full_path('xvhdl'), str(source)] + self._get_include_options(self.includes) + define_args)
+                cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args)
             elif ".xci" in str(source):
                 # JANK as fuck
                 ip_sources.append(str(source))
