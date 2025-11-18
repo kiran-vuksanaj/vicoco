@@ -69,7 +69,7 @@
         "ARCHITECTURE": [ { "value": "spartan7" } ],
         "BASE_BOARD_PART": [ { "value": "" } ],
         "BOARD_CONNECTIONS": [ { "value": "" } ],
-        "DEVICE": [ { "value": "xc7s50" } ],
+        "DEVICE": [ { "value": "xc7s25" } ],
         "PACKAGE": [ { "value": "csga324" } ],
         "PREFHDL": [ { "value": "VERILOG" } ],
         "SILICON_REVISION": [ { "value": "" } ],

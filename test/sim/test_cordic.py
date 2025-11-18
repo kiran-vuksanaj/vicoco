@@ -47,6 +47,7 @@ def test_cordictb():
     xilinx_root = "/tools/Xilinx/2025.1/Vivado"
     runner = get_runner(sim,xilinx_root=xilinx_root)
 
+    runner.part_num = "xc7s25csga324-1"
     runner.build(
         sources=sources,
         hdl_toplevel=toplevel,
