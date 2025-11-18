@@ -9,6 +9,7 @@ Timescale = Tuple[str, str]
 
 import subprocess
 from os import environ
+from glob import glob
 
 import csv
 
@@ -141,7 +142,11 @@ class Vivado(cocotb.runner.Simulator):
 
         
         ip_user_root = self.build_dir / '.ip_user_files'
-
+        
+        # Move mem_init_files directory contents to build directory to be accessed during simulation
+        mem_init_files = glob( str(ip_user_root/'mem_init_files'/'*') )
+        if (len(mem_init_files) > 0):
+            self._execute( [['cp'] + mem_init_files + ['.']], cwd=self.build_dir)
         
 
         for xci_filename in xci_files:
