@@ -113,13 +113,15 @@ class Vivado(cocotb.runner.Simulator):
         print("Out Of Date: ",outofdate)
         return outofdate
         
-    def _ip_synth_cmds(self, xci_files: Sequence[PathLike], partNum: Union[str,None] = None) -> Sequence[Command]:
+    def _ip_synth_cmds(self, xci_files: Sequence[PathLike]) -> Sequence[Command]:
         """
-        file-generation + commands in order to synthesize ip for
+        file-generation + commands in order to synthesize ip for simulation
         """
 
-        if partNum == None:
+        if self.part_num == None:
             partNum = "xc7s50csga324-1"
+        else:
+            partNum = self.part_num
 
         # build tiny vivado script to usep
 
@@ -137,13 +139,16 @@ class Vivado(cocotb.runner.Simulator):
                 f.write("export_ip_user_files\n")
             self._execute( [[self._full_path('vivado'), '-mode', 'batch', '-source', 'build_ip.tcl']], cwd=self.build_dir)
 
+        
+        ip_user_root = self.build_dir / '.ip_user_files'
+
+        
 
         for xci_filename in xci_files:
             xci_as_path = Path(xci_filename)
             ip_name = xci_as_path.stem
             print("IP Name:", ip_name)
 
-            ip_user_root = self.build_dir / '.ip_user_files'
 
             # ipstatic = ip_user_root / 'ipstatic' / 'ip'
             # for child in ipstatic.iterdir():
