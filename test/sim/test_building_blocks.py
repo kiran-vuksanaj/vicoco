@@ -23,7 +23,7 @@ async def put_values_clocks(dut):
 
 from pathlib import Path
 # from cocotb.runner import get_runner
-from vicoco.vivado_runner import get_runner
+from vicoco.vivado_runner import get_runner,VHDL,Verilog
 
 def test_building_blocks():
     this_file = Path(__file__).resolve()
@@ -45,6 +45,7 @@ def test_building_blocks():
         sources=sources,
         hdl_toplevel=toplevel,
         always=True,
+        build_args=[VHDL("2008")], # this doesn't do anything, but does demo the tagged build arg system
         timescale=('1ns','1ps'),
         waves=True)
     runner.test(

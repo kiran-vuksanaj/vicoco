@@ -6,6 +6,7 @@ from typing import Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Type,
 PathLike = Union["os.PathLike[str]", str]
 Command = List[str]
 Timescale = Tuple[str, str]
+from cocotb.runner import VHDL,Verilog
 
 import subprocess
 from os import environ
@@ -237,7 +238,6 @@ class Vivado(cocotb.runner.Simulator):
         self.xilinx_libraries.add( 'xpm' )
         self.xilinx_libraries.add( 'secureip' )
 
-        print(self.xilinx_libraries)
 
 
         if self.waves:
@@ -246,12 +246,15 @@ class Vivado(cocotb.runner.Simulator):
         cmds = []
 
         ip_sources = []
+        verilog_build_args = ["-{}".format(arg) for arg in self.build_args if type(arg) in (str,Verilog)]
+        vhdl_build_args = ["-{}".format(arg) for arg in self.build_args if type(arg) in (str,VHDL)]
+
         for source in self.sources:
             if cocotb.runner.is_verilog_source(source):
                 # TODO maybe should be redone for a .v file ending?
-                cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args)
+                cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
             elif cocotb.runner.is_vhdl_source(source):
-                cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args)
+                cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
             elif ".xci" in str(source):
                 # JANK as fuck
                 ip_sources.append(str(source))
