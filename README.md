@@ -53,11 +53,7 @@ pytest -s
 TODO diagram + descriptions of operations (compare between normal cocotb and this)
 
 
-### Upcoming things to work on
-- ~~organize into directories properly~~, make more tests
-- ~~python test runner object~~
-- Make rising/falling edge triggers in the manager
-- restore proper management of undefined variables
-- Build second backend for launching a TCL shell for the simulator and interacting with Vivado through that
-- Export to vcd files
-- simplified way to go from Vivado IP to cocotb simulation
+### upcoming work
+- use block diagram files/wrappers as input files to the Python runner
+- better approach to getting waveform files out during simulation (current method is very jank)
+- proper documentation....

@@ -47,6 +47,10 @@ async def only_clockedge(dut):
     # await Timer(1,'ns')
     dut._log.info(f"Count out value: [post read-only] {dut.smallcount_out.value.integer}")
     await ClockCycles(dut.clk,10)
+    dut._log.info(f"Slow out value: {dut.slow_out.value.integer}")
+    await RisingEdge(dut.slow_out)
+    dut._log.info(f"Slow out value: {dut.slow_out.value.integer}")
+    
     dut._log.info(f"Finishing... {get_sim_time('ns')}")
     
 
@@ -60,13 +64,16 @@ def test_completetb():
     sim = os.getenv("SIM","vivado")
     hdl_toplevel_lang = "verilog"
     toplevel = "valuechanger"
+    parameters = {"SLOW_DEPTH":5}
     runner = get_runner(sim)
+
 
     runner.build(
         sources=sources,
         hdl_toplevel=toplevel,
         always=True,
         timescale = ('1ns','1ps'),
+        parameters=parameters,
         waves=True)
     runner.test(
         hdl_toplevel=toplevel,

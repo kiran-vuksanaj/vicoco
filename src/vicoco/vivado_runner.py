@@ -7,12 +7,15 @@ PathLike = Union["os.PathLike[str]", str]
 Command = List[str]
 Timescale = Tuple[str, str]
 from cocotb.runner import VHDL,Verilog
+import warnings 
 
 import subprocess
 from os import environ
 from glob import glob
 
 import csv
+
+import logging
 
 file_dump_waves = """
 `timescale 1ns / 1ps
@@ -39,8 +42,13 @@ class Vivado(cocotb.runner.Simulator):
             self.xilinx_root = environ.get('XILINX_VIVADO',None)
 
         self.part_num = part_num
+
+        self.log = logging.getLogger("vicoco.vivado_runner")
+        logging.basicConfig()
         
         super().__init__()
+
+
     
     def _simulator_in_path(self) -> None:
         # if 'XILINX_VIVADO' not in environ:
@@ -112,7 +120,7 @@ class Vivado(cocotb.runner.Simulator):
             if cocotb.runner.outdated(sample_ip_user_file,[xci_file]):
                 outofdate.append(xci_file)
 
-        print("Out Of Date: ",outofdate)
+        self.log.info("Out Of Date: ",outofdate)
         return outofdate
         
     def _ip_synth_cmds(self, xci_files: Sequence[PathLike]) -> Sequence[Command]:
@@ -214,7 +222,7 @@ class Vivado(cocotb.runner.Simulator):
         self.waveform_filename = str(self.build_dir / f'{toplevel}.vcd')
         if self.fst_output:
             self.waveform_filename = self.waveform_filename.replace('.vcd','.fst')
-        print(f"waveform output to {self.waveform_filename}")
+        self.log.info(f"waveform output to {self.waveform_filename}")
         
         file_text = file_dump_waves.format(waveform_filename=self.waveform_filename,toplevel=toplevel)
         file_name = self.build_dir / "cocotb_vivado_dump.v"
@@ -231,7 +239,17 @@ class Vivado(cocotb.runner.Simulator):
             out.extend(['-d',f'{key}={val}'])
         return out
         
+    def _issue_build_warnings(self):
+        if (self.waves and len(self.parameters) > 0):
+            self.log.warning("Known Vicoco issue: when top-level parameters are set by Python, Vicoco doesn't successfully yield a VCD/FST waveform output. A Vivado WDB file will still be available. Setting waves=False and manually creating a waveform file using Verilog $dumpfile/$dumpvars commands in your top-level is a workable alternative.\n")
+
+    def _issue_test_warnings(self):
+        if (self.waves and self.hdl_toplevel_lang == "vhdl"):
+            self.log.warning("Vicoco limitation: VCD/FST waveform output can't be generated on VHDL top level designs. A Vivado WDB file will still be generated. runner.waves will be set to False.\n")
+            self.waves = False
+
     def _build_command(self) -> Sequence[Command]:
+        self._issue_build_warnings()
 
         define_args = self._define_args()
         
@@ -275,11 +293,12 @@ class Vivado(cocotb.runner.Simulator):
 
 
         self.snapshot_name = "pybound_sim"
+        param_args = self._get_parameter_options(self.parameters)
 
         elab_cmd = [self._full_path("xelab"),
                     "-top", self.hdl_toplevel,
                     "-snapshot", "pybound_sim",
-                    ] + self._get_include_options(self.includes) + define_args
+                    ] + self._get_include_options(self.includes) + define_args + param_args
 
         elab_cmd.extend(self.elab_modules)
 
@@ -293,12 +312,11 @@ class Vivado(cocotb.runner.Simulator):
         
         cmds.append(elab_cmd)
 
-        print("Build Commands: ",cmds)
-
         return cmds
 
     def _test_command(self) -> Sequence[Command]:
         # bridge to cross: everything needs to become internalized to a module
+        self._issue_test_warnings()
 
         cmd = [
             ["python3", "-m", "vicoco"]
@@ -315,10 +333,11 @@ class Vivado(cocotb.runner.Simulator):
         
         return cmd
 
-    def _get_parameter_options(self, paramters: Mapping[str, object]) -> Command:
-        # TODO make this actually return stuff properly... i think fitting the -generic_top "PARAM=1" format
-        return []
-        
+    def _get_parameter_options(self, parameters: Mapping[str, object]) -> Command:
+        param_options = []
+        for param,val in parameters.items():
+            param_options.extend(["-generic_top","{}={}".format(param,str(val))])
+        return param_options
 
 def get_runner(simulator_name: str, **kwargs) -> cocotb.runner.Simulator:
     """
