@@ -136,9 +136,11 @@ class Vivado(cocotb.runner.Simulator):
                 f.write(f"set partNum {partNum}\n")
                 f.write("set_part $partNum\n")
 
-                for xci_path in outdated_xci_files:
-                    f.write(f"read_ip {xci_path}\n")
-                f.write("export_ip_user_files\n")
+                # for xci_path in outdated_xci_files:
+#                     f.write(f"read_ip {xci_path}\n")
+ #                f.write("export_ip_user_files\n")
+                f.write("add_files -norecurse /home/kiranv/Documents/fpga/vivgui/bd_test/bd_test.srcs/sources_1/bd/design_1/design_1.bd")
+                f.write(f"export_ip_user_files -of_objects [get_files {outdated_xci_files[0]}] \n")
             self._execute( [[self._full_path('vivado'), '-mode', 'batch', '-source', 'build_ip.tcl']], cwd=self.build_dir)
 
         
@@ -255,7 +257,7 @@ class Vivado(cocotb.runner.Simulator):
                 cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
             elif cocotb.runner.is_vhdl_source(source):
                 cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
-            elif ".xci" in str(source):
+            elif ".xci" in str(source) or ".bd" in str(source):
                 # JANK as fuck
                 ip_sources.append(str(source))
             else:
