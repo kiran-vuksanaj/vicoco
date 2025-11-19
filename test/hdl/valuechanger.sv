@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
-module valuechanger(
+module valuechanger#(
+    parameter SLOW_DEPTH=4
+)(
   input wire         clk,
   input wire         rst,
   input wire         incr_in,
@@ -8,10 +10,10 @@ module valuechanger(
   output logic       slow_out,
   output logic       incr_out_delay,
   output logic       secondary_delay,
-  output logic [3:0] smallcount_out
+  output logic [SLOW_DEPTH-1:0] smallcount_out
 );
 
-  assign slow_out = smallcount_out[3];
+  assign slow_out = smallcount_out[SLOW_DEPTH-1];
   
   always_ff @(posedge clk) begin
 
