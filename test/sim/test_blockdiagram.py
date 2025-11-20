@@ -31,7 +31,7 @@ def test_fft_tb():
                ]
     sim = "vivado"
     hdl_toplevel_lang = "verilog"
-    toplevel = "design_1_wrapper.v"
+    toplevel = "design_1_wrapper"
     runner = get_runner(sim)
 
     runner.build(

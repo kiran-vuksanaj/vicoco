@@ -144,11 +144,10 @@ class Vivado(cocotb.runner.Simulator):
                 f.write(f"set partNum {partNum}\n")
                 f.write("set_part $partNum\n")
 
-                # for xci_path in outdated_xci_files:
-#                     f.write(f"read_ip {xci_path}\n")
- #                f.write("export_ip_user_files\n")
-                f.write("add_files -norecurse /home/kiranv/Documents/fpga/vivgui/bd_test/bd_test.srcs/sources_1/bd/design_1/design_1.bd")
-                f.write(f"export_ip_user_files -of_objects [get_files {outdated_xci_files[0]}] \n")
+                for xci_path in outdated_xci_files:
+                    f.write(f"add_files -norecurse {xci_path}\n")
+                    # f.write(f"read_ip {xci_path}\n")
+                f.write("export_ip_user_files\n")
             self._execute( [[self._full_path('vivado'), '-mode', 'batch', '-source', 'build_ip.tcl']], cwd=self.build_dir)
 
         
@@ -190,7 +189,9 @@ class Vivado(cocotb.runner.Simulator):
                     module_name = row[0]
                     library_name = row[2]
                     module_name = module_name[:module_name.index('.')]
-                    if module_name != ip_name:
+                    # if module_name != ip_name:
+                        # self.elab_modules.append(f"{library_name}.{module_name}")
+                    if "glbl" in module_name:
                         self.elab_modules.append(f"{library_name}.{module_name}")
                     # ip_cmds.append ( self._file_info_to_parse(row,xsim_script_root) )
 
