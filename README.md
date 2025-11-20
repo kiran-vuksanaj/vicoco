@@ -55,5 +55,6 @@ TODO diagram + descriptions of operations (compare between normal cocotb and thi
 
 ### upcoming work
 - use block diagram files/wrappers as input files to the Python runner
+- lazy rebuilds when always=False
 - better approach to getting waveform files out during simulation (current method is very jank)
 - proper documentation....
