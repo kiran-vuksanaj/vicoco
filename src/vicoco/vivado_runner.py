@@ -27,6 +27,19 @@ module cocotb_vivado_dump();
 endmodule
 """
 
+def needs_rebuild(source_file: PathLike, target_file: PathLike) -> bool:
+    source_stat = Path(source_file).stat()
+    try:
+        target_stat = Path(target_file).stat()
+    except FileNotFoundError:
+        print("rebuild:", target_file, "dne")
+        return True
+    r = source_stat.st_mtime > target_stat.st_mtime
+    if r:
+        print("rebuild:", source_file, "newer than", target_file)
+    return r
+
+
 class Vivado(cocotb.runner.Simulator):
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
@@ -273,7 +286,9 @@ class Vivado(cocotb.runner.Simulator):
         for source in self.sources:
             if cocotb.runner.is_verilog_source(source):
                 # TODO maybe should be redone for a .v file ending?
-                cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
+                target_file = self.build_dir / "xsim.dir" / "work" / Path(source).with_suffix(".sdb").name
+                if needs_rebuild(source, target_file):
+                    cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
             elif cocotb.runner.is_vhdl_source(source):
                 cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
             elif ".xci" in str(source) or ".bd" in str(source):
