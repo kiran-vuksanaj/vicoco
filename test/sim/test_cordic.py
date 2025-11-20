@@ -51,7 +51,7 @@ def test_cordictb():
     runner.build(
         sources=sources,
         hdl_toplevel=toplevel,
-        always=True,
+        always=False,
         timescale = ('1ns','1ps'),
         waves=True)
     runner.test(

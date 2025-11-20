@@ -27,19 +27,6 @@ module cocotb_vivado_dump();
 endmodule
 """
 
-def needs_rebuild(source_file: PathLike, target_file: PathLike) -> bool:
-    source_stat = Path(source_file).stat()
-    try:
-        target_stat = Path(target_file).stat()
-    except FileNotFoundError:
-        print("rebuild:", target_file, "dne")
-        return True
-    r = source_stat.st_mtime > target_stat.st_mtime
-    if r:
-        print("rebuild:", source_file, "newer than", target_file)
-    return r
-
-
 class Vivado(cocotb.runner.Simulator):
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
@@ -61,7 +48,19 @@ class Vivado(cocotb.runner.Simulator):
         
         super().__init__()
 
+    def source_rtl_target(self,source_file: PathLike) -> PathLike:
+        return self.build_dir / "xsim.dir" / "work" / Path(source_file).with_suffix(".sdb").name
+    def source_ip_target(self,source_file: PathLike) -> PathLike:
+        ip_name = Path(source_file).stem
+        return self.build_dir / ".ip_user_files" / "sim_scripts" / ip_name / "vcs" / "file_info.txt"
+    
+    def _outofdate_ip(self,xci_file: PathLike) -> bool:
 
+        xci_file = Path(xci_file)
+        target_file = self.source_ip_target(xci_file)
+        return cocotb.runner.outdated(target_file,[xci_file]) or self.always
+
+    
     
     def _simulator_in_path(self) -> None:
         # if 'XILINX_VIVADO' not in environ:
@@ -117,24 +116,6 @@ class Vivado(cocotb.runner.Simulator):
         return cmd
         
 
-    def _outofdate_ip(self,xci_files: Sequence[PathLike]) -> Sequence[PathLike]:
-
-        # if self.always:
-        #     return xci_files
-
-        outofdate = []
-        
-        for xci_file in xci_files:
-
-            xci_file = Path(xci_file).resolve()
-            ip_name = xci_file.stem
-            sample_ip_user_file = self.build_dir / ".ip_user_files" / "sim_scripts" / ip_name / "xsim" / "README.txt"
-
-            if cocotb.runner.outdated(sample_ip_user_file,[xci_file]):
-                outofdate.append(xci_file)
-
-        self.log.info("Out Of Date: ",outofdate)
-        return outofdate
         
     def _ip_synth_cmds(self, xci_files: Sequence[PathLike]) -> Sequence[Command]:
         """
@@ -150,7 +131,7 @@ class Vivado(cocotb.runner.Simulator):
 
         ip_cmds: Sequence[Command] = []
 
-        outdated_xci_files = self._outofdate_ip(xci_files)
+        outdated_xci_files = [xci_file for xci_file in xci_files if self._outofdate_ip(xci_file)]
 
         if (len(outdated_xci_files) > 0):
             with open(self.build_dir / "build_ip.tcl","w") as f:
@@ -175,7 +156,6 @@ class Vivado(cocotb.runner.Simulator):
         for xci_filename in xci_files:
             xci_as_path = Path(xci_filename)
             ip_name = xci_as_path.stem
-            print("IP Name:", ip_name)
 
 
             # ipstatic = ip_user_root / 'ipstatic' / 'ip'
@@ -212,10 +192,11 @@ class Vivado(cocotb.runner.Simulator):
             vhdl_proj = xsim_script_root / 'vhdl.prj'
             vlog_proj = xsim_script_root / 'vlog.prj'
 
-            if vhdl_proj.exists():
-                ip_cmds.append( [self._full_path('xvhdl'),'--incr','--relax','-prj',str(vhdl_proj)] )
-            if vlog_proj.exists():
-                ip_cmds.append( [self._full_path('xvlog'),'--incr','--relax','-prj',str(vlog_proj)] + self._get_include_options(self.includes) )
+            if self._outofdate_ip(xci_filename):
+                if vhdl_proj.exists():
+                    ip_cmds.append( [self._full_path('xvhdl'),'--incr','--relax','-prj',str(vhdl_proj)] )
+                if vlog_proj.exists():
+                    ip_cmds.append( [self._full_path('xvlog'),'--incr','--relax','-prj',str(vlog_proj)] + self._get_include_options(self.includes) )
 
             # ip_cmds.append( ['sh','-c', f"cd {xsim_script_root} && ./{ip_name}.sh -step compile"] )
 
@@ -240,8 +221,9 @@ class Vivado(cocotb.runner.Simulator):
         
         file_text = file_dump_waves.format(waveform_filename=self.waveform_filename,toplevel=toplevel)
         file_name = self.build_dir / "cocotb_vivado_dump.v"
-        with open(file_name,'w') as f:
-            f.write(file_text)
+        if self.always or not(file_name.exists()):
+            with open(file_name,'w') as f:
+                f.write(file_text)
 
         self.elab_modules.append("work.cocotb_vivado_dump")
         self.sources.append(file_name)
@@ -283,16 +265,27 @@ class Vivado(cocotb.runner.Simulator):
         verilog_build_args = ["-{}".format(arg) for arg in self.build_args if type(arg) in (str,Verilog)]
         vhdl_build_args = ["-{}".format(arg) for arg in self.build_args if type(arg) in (str,VHDL)]
 
+        # run elab cmd iff self.always or any source needs to be re-compiled
+        elab_cmd_necessary = self.always
+        
         for source in self.sources:
             if cocotb.runner.is_verilog_source(source):
                 # TODO maybe should be redone for a .v file ending?
-                target_file = self.build_dir / "xsim.dir" / "work" / Path(source).with_suffix(".sdb").name
-                if needs_rebuild(source, target_file):
+                target_file = self.source_rtl_target(source)
+                if cocotb.runner.outdated(target_file, [source]) or self.always:
                     cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
+                    elab_cmd_necessary = True
+                    
             elif cocotb.runner.is_vhdl_source(source):
-                cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
+                target_file = self.source_rtl_target(source)
+                if cocotb.runner.outdated(target_file, [source]) or self.always:
+                    cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
+                    elab_cmd_necessary = True
             elif ".xci" in str(source) or ".bd" in str(source):
                 # JANK as fuck
+                target_file = self.source_ip_target(source)
+                if cocotb.runner.outdated(target_file,[source]) or self.always:
+                    elab_cmd_necessary = True
                 ip_sources.append(str(source))
             else:
                 raise ValueError(
@@ -302,10 +295,6 @@ class Vivado(cocotb.runner.Simulator):
 
         if len(ip_sources) > 0:
             cmds.extend( self._ip_synth_cmds(ip_sources) )
-        # cmds.append(['vivado', '-mode', 'batch', '-source', 'build_ip.tcl'])
-        # cmds.append(['xvhdl', '--incr', '--relax', '-prj', '.ip_user_files/sim_scripts/cordic_0/xsim/vhdl.prj'])
-        # cmds.append
-        # cmds.append(['xvhdl','--incr', '--relax', '-prj', '/home/kiranv/Documents/fpga/vivgui/getfifos/getfifos.ip_user_files/sim_scripts/cordic_0/xsim/vhdl.prj'])
 
 
         self.snapshot_name = "pybound_sim"
@@ -325,9 +314,11 @@ class Vivado(cocotb.runner.Simulator):
             elab_cmd.extend(['-dll','-debug','wave'])
         else:
             elab_cmd.extend(['-debug','all'])
-        
-        cmds.append(elab_cmd)
 
+        if elab_cmd_necessary:
+            cmds.append(elab_cmd)
+
+        print(cmds)
         return cmds
 
     def _test_command(self) -> Sequence[Command]:
