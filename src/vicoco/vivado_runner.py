@@ -35,6 +35,7 @@ class Vivado(cocotb.runner.Simulator):
         self.launch_mode = mode
         self.xilinx_libraries = set()
         self.fst_output = True
+        self.validate_flags = True
 
         if xilinx_root is not None:
             self.xilinx_root = xilinx_root
@@ -243,6 +244,10 @@ class Vivado(cocotb.runner.Simulator):
     def _issue_build_warnings(self):
         if (self.waves and len(self.parameters) > 0):
             self.log.warning("Known Vicoco issue: when top-level parameters are set by Python, Vicoco doesn't successfully yield a VCD/FST waveform output. A Vivado WDB file will still be available. Setting waves=False and manually creating a waveform file using Verilog $dumpfile/$dumpvars commands in your top-level is a workable alternative.\n")
+        if (self.validate_flags and '-Wall' in self.build_args):
+            self.log.warning("Build arg -Wall is not valid for Vivado simulation. -Wall will be removed from build_args list. To disable this behavior/warning, set runner.validate_flags to False.")
+            self.build_args.remove('-Wall')
+
 
     def _issue_test_warnings(self):
         if (self.waves and self.hdl_toplevel_lang == "vhdl"):
@@ -267,8 +272,8 @@ class Vivado(cocotb.runner.Simulator):
         cmds = []
 
         ip_sources = []
-        verilog_build_args = ["-{}".format(arg) for arg in self.build_args if type(arg) in (str,Verilog)]
-        vhdl_build_args = ["-{}".format(arg) for arg in self.build_args if type(arg) in (str,VHDL)]
+        verilog_build_args = ["{}".format(arg) for arg in self.build_args if type(arg) in (str,Verilog)]
+        vhdl_build_args = ["{}".format(arg) for arg in self.build_args if type(arg) in (str,VHDL)]
 
         for source in self.sources:
             if cocotb.runner.is_verilog_source(source):

@@ -48,7 +48,7 @@ def test_building_blocks():
         sources=sources,
         hdl_toplevel=toplevel,
         always=True,
-        build_args=[VHDL("2008")], # this doesn't do anything, but does demo the tagged build arg system
+        build_args=[VHDL("-2008")], # this doesn't do anything, but does demo the tagged build arg system
         timescale=('1ns','1ps'),
         waves=True)
     runner.test(
