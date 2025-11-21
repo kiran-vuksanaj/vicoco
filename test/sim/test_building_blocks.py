@@ -3,7 +3,10 @@
 import cocotb
 from cocotb.triggers import Timer,ClockCycles
 from cocotb.clock import Clock
-
+try:
+    import pytest
+except ImportError:
+    pass
 @cocotb.test()
 async def put_values_clocks(dut):
     cocotb.start_soon( Clock(dut.clk,10,'ns').start() )

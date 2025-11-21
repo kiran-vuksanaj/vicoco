@@ -11,7 +11,10 @@ from vicoco.vivado_runner import get_runner
 import os
 
 from cocotb.clock import Clock
-import pytest
+try:
+    import pytest
+except ImportError:
+    pass
 
 @cocotb.test()
 async def barebones_clock(dut):

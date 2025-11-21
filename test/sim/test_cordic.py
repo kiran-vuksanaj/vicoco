@@ -8,7 +8,10 @@ from vicoco.vivado_runner import get_runner
 import os
 
 from cocotb.clock import Clock
-
+try:
+    import pytest
+except ImportError:
+    pass
 
 @cocotb.test()
 async def simple_timers(dut):

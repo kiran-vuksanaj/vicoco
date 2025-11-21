@@ -2,7 +2,10 @@
 import cocotb
 from cocotb.triggers import Timer, RisingEdge, ClockCycles, ReadOnly
 from cocotb.clock import Clock
-
+try:
+    import pytest
+except ImportError:
+    pass
 
 @cocotb.test()
 async def clocks_only(dut):

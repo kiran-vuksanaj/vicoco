@@ -11,6 +11,10 @@ from vicoco.vivado_runner import get_runner
 from cocotb.clock import Clock
 
 import logging
+try:
+    import pytest
+except ImportError:
+    pass
 
 async def coro_a(dut):
     dut._log.info("coro running")

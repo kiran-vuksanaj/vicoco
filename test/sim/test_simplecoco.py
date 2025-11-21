@@ -11,6 +11,11 @@ from vicoco.vivado_runner import get_runner
 from cocotb.binary import BinaryValue, LogicArray
 from cocotb.clock import Clock
 
+try:
+    import pytest
+except ImportError:
+    pass
+
 @cocotb.test()
 async def undefined_values(dut):
 
