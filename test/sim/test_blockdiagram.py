@@ -11,27 +11,27 @@ from vicoco.vivado_runner import get_runner
 import os
 
 from cocotb.clock import Clock
-try:
-    import pytest
-except ImportError:
-    pass
+import pytest
 
 @cocotb.test()
 async def barebones_clock(dut):
     cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
     await Timer(3000,'ns')
 
-def test_fft_tb():
+@pytest.mark.skipif(not("SAMPLE_BD" in os.environ), reason="full Vivado project not included in repo. specify SAMPLE_BD and SAMPLE_BD_WRAPPER to test a block diagram toplevel design.")
+def test_blockdiagram_tb():
     tb_name = "test_blockdiagram"
 
     proj_path = Path(__file__).resolve().parent
 
-    vivado_version = os.getenv("VIVADO_VERSION","2025.1")
-    vivado_version_directory = "Vivado_"+vivado_version.replace(".","_")
+    sample_bd = os.getenv("SAMPLE_BD",None)
+    sample_bd_wrapper = os.getenv("SAMPLE_BD_WRAPPER",None)
+
+    if (sample_bd is None or sample_bd_wrapper is None):
+        print("Run with SAMPLE_BD={path/to/bockdiagram.bd} SAMPLE_BD_WRAPPER={path/to/wrapper.v}.")
+        return
     
-    sources = ["/home/kiranv/Documents/fpga/vivgui/bd_test/bd_test.gen/sources_1/bd/design_1/hdl/design_1_wrapper.v",
-            "/home/kiranv/Documents/fpga/vivgui/bd_test/bd_test.srcs/sources_1/bd/design_1/design_1.bd"
-               ]
+    sources = [sample_bd,sample_bd_wrapper]
     sim = "vivado"
     hdl_toplevel_lang = "verilog"
     toplevel = "design_1_wrapper"
@@ -50,4 +50,4 @@ def test_fft_tb():
         waves=True)
 
 if __name__ == "__main__":
-    test_fft_tb()
+    test_blockdiagram_tb()
