@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='vicoco',
-    version='v0.0.2',
+    version='v0.0.3',
     description='Vivado xsim compatibility',
     author='Kiran Vuksanaj',
     author_email='kiranv@mit.edu',

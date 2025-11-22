@@ -1,6 +1,11 @@
+v0.0.3 - 2025-11-21
 
+Improvements/stabilizations for the vivado\_runner class. Stable version for 6.205 lab-bc machines.
 
-v0.0.2 - 2025-11-20
+* access to global modules, extra libraries etc at get\_runner() instantiation
+* WIP validate\_flags operator to remove invalid flags (e.g. -Wall) from `build\_args` parameter, avoid crashes during xvlog/xelab process 
+
+v0.0.2dev- 2025-11-20
 
 Various updates to the vivado\_runner system to more properly match native Vivado simulations + make more stuff compile successfully. 
 
@@ -13,4 +18,4 @@ Various updates to the vivado\_runner system to more properly match native Vivad
 
 v0.0.1
 
-Initial release as provided to 6.205/6.S965
+Initial release as provided to 6.205/6.S965.
