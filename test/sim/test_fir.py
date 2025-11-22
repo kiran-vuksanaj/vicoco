@@ -21,7 +21,7 @@ async def barebones_clock(dut):
     cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
     await Timer(3000,'ns')
 
-def test_fft_tb():
+def test_fir_tb():
     tb_name = "test_fir"
 
     proj_path = Path(__file__).resolve().parent
@@ -50,4 +50,4 @@ def test_fft_tb():
         waves=True)
 
 if __name__ == "__main__":
-    test_fft_tb()
+    test_fir_tb()

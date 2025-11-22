@@ -40,9 +40,8 @@ def test_building_blocks():
     hdl_toplevel_lang = "verilog"
     toplevel = "building_blocks"
 
-    runner = get_runner(sim)
+    runner = get_runner(sim, xilinx_extra_libraries=["unisim"])
 
-    runner.xilinx_libraries.add("unisim")
 
     runner.build(
         sources=sources,
