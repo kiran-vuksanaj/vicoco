@@ -31,11 +31,21 @@ class Vivado(cocotb.runner.Simulator):
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
 
-    def __init__(self,mode,xilinx_root=None,part_num=None):
+    def __init__(self,mode,
+            xilinx_root=None,
+            part_num=None,
+            xilinx_extra_libraries = [],
+            fst_output = True,
+            validate_flags = False,
+            extra_global_modules = [] 
+            ):
         self.launch_mode = mode
-        self.xilinx_libraries = set()
-        self.fst_output = True
-        self.validate_flags = True
+
+        self.xilinx_libraries = set(xilinx_extra_libraries)
+        self.fst_output = fst_output
+        self.validate_flags = validate_flags
+
+        self.elab_modules = list(extra_global_modules)
 
         if xilinx_root is not None:
             self.xilinx_root = xilinx_root
@@ -259,7 +269,6 @@ class Vivado(cocotb.runner.Simulator):
 
         define_args = self._define_args()
         
-        self.elab_modules = []
 
         self.xilinx_libraries.add( 'xpm' )
         self.xilinx_libraries.add( 'secureip' )
