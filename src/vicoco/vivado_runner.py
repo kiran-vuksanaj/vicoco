@@ -36,7 +36,7 @@ class Vivado(cocotb.runner.Simulator):
             part_num=None,
             xilinx_extra_libraries = [],
             fst_output = True,
-            validate_flags = False,
+            validate_flags = True,
             extra_global_modules = [] 
             ):
         self.launch_mode = mode
