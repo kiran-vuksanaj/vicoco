@@ -1,12 +1,14 @@
 
-import cocotb.runner
+# native runner changed names in 2.0
+import cocotb_tools.runner
 
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Type, Union
 PathLike = Union["os.PathLike[str]", str]
 Command = List[str]
 Timescale = Tuple[str, str]
-from cocotb.runner import VHDL,Verilog
+import cocotb_tools.runner
+from cocotb_tools.runner import VHDL,Verilog, _Tag, _ValueAndTag, _determine_file_type
 import warnings 
 
 import subprocess
@@ -27,7 +29,7 @@ module cocotb_vivado_dump();
 endmodule
 """
 
-class Vivado(cocotb.runner.Simulator):
+class Vivado(cocotb_tools.runner.Runner):
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
 
@@ -128,10 +130,10 @@ class Vivado(cocotb.runner.Simulator):
             ip_name = xci_file.stem
             sample_ip_user_file = self.build_dir / ".ip_user_files" / "sim_scripts" / ip_name / "xsim" / "README.txt"
 
-            if cocotb.runner.outdated(sample_ip_user_file,[xci_file]):
+            if cocotb_tools.runner.outdated(sample_ip_user_file,[xci_file]):
                 outofdate.append(xci_file)
 
-        self.log.info("Out Of Date: ",outofdate)
+        # self.log.info("Out Of Date: ",outofdate)
         return outofdate
         
     def _ip_synth_cmds(self, xci_files: Sequence[PathLike]) -> Sequence[Command]:
@@ -225,6 +227,12 @@ class Vivado(cocotb.runner.Simulator):
             out.extend(['-i',str(incl)])
         return out
 
+    def _get_define_options(self, defines):
+        return []
+
+    def _get_parameter_options(self,parameters):
+        return []
+
     def _write_wavedump_file(self):
 
         toplevel = self.hdl_toplevel
@@ -234,7 +242,7 @@ class Vivado(cocotb.runner.Simulator):
         self.waveform_filename = str(self.build_dir / f'{toplevel}.vcd')
         if self.fst_output:
             self.waveform_filename = self.waveform_filename.replace('.vcd','.fst')
-        self.log.info(f"waveform output to {self.waveform_filename}")
+        # self.log.info(f"waveform output to {self.waveform_filename}")
         
         file_text = file_dump_waves.format(waveform_filename=self.waveform_filename,toplevel=toplevel)
         file_name = self.build_dir / "cocotb_vivado_dump.v"
@@ -242,7 +250,7 @@ class Vivado(cocotb.runner.Simulator):
             f.write(file_text)
 
         self.elab_modules.append("work.cocotb_vivado_dump")
-        self.sources.append(file_name)
+        self._sources.append(_ValueAndTag(file_name,Verilog))
 
     def _define_args(self) -> Sequence[str]:
 
@@ -281,18 +289,19 @@ class Vivado(cocotb.runner.Simulator):
         cmds = []
 
         ip_sources = []
-        verilog_build_args = ["{}".format(arg) for arg in self.build_args if type(arg) in (str,Verilog)]
-        vhdl_build_args = ["{}".format(arg) for arg in self.build_args if type(arg) in (str,VHDL)]
+        verilog_build_args = ["{}".format(arg) for arg in self._build_args if type(arg) in (str,Verilog)]
+        vhdl_build_args = ["{}".format(arg) for arg in self._build_args if type(arg) in (str,VHDL)]
 
-        for source in self.sources:
-            if cocotb.runner.is_verilog_source(source):
+
+        for source in self._sources:
+            if source.tag is Verilog:
                 # TODO maybe should be redone for a .v file ending?
-                cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
-            elif cocotb.runner.is_vhdl_source(source):
-                cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
-            elif ".xci" in str(source) or ".bd" in str(source):
+                cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source.value)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
+            elif source.tag is VHDL:
+                cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source.value)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
+            elif ".xci" in str(source.value) or ".bd" in str(source.value):
                 # JANK as fuck
-                ip_sources.append(str(source))
+                ip_sources.append(str(source.value))
             else:
                 raise ValueError(
                     f"Unknown file type: {str(source)} can't be compiled."
@@ -354,7 +363,7 @@ class Vivado(cocotb.runner.Simulator):
             param_options.extend(["-generic_top","{}={}".format(param,str(val))])
         return param_options
 
-def get_runner(simulator_name: str, **kwargs) -> cocotb.runner.Simulator:
+def get_runner(simulator_name: str, **kwargs) -> cocotb_tools.runner.Runner:
     """
     this is... pretty jank. manually add 'vivado' to the list of supported sims
     """
@@ -364,9 +373,23 @@ def get_runner(simulator_name: str, **kwargs) -> cocotb.runner.Simulator:
     elif simulator_name == "vivado_tcl":
         return Vivado('TCL')
     else:
-        return cocotb.runner.get_runner(simulator_name)
+        return cocotb_tools.runner.get_runner(simulator_name)
 
+# expansions to file tagging system
+    
+class VivadoIPDefinition(_Tag):
+    """Tags source files to :meth:`Runner.build() <cocotb_tools.runner.Runner.build>` as Vivado IP definition files (.bd or .xci)"""
 
+_vivado_ip_extensions = (".bd",".xci")
+    
+def _determine_file_type_override(filename: PathLike) -> _Tag:
+    ext = Path(filename).suffix
+    if ext in _vivado_ip_extensions:
+        return VivadoIPDefinition
+    else:
+        return _determine_file_type(filename)
+cocotb_tools.runner._determine_file_type = _determine_file_type_override
+    
 def makefile_recreate():
     """
     match what the makefile does, so as to motivate the proper functions for the runner type
