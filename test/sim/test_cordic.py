@@ -15,19 +15,19 @@ except ImportError:
 
 @cocotb.test()
 async def simple_timers(dut):
-    cocotb.start_soon( Clock(dut.aclk,10,units='ns').start() )
+    cocotb.start_soon( Clock(dut.aclk,10,unit='ns').start() )
     dut.s_axis_cartesian_tvalid.value = 0
     dut.s_axis_cartesian_tdata.value = 8
 
-    await Timer(20,units='ns')
+    await Timer(20,unit='ns')
     dut.s_axis_cartesian_tvalid.value = 1
-    await Timer(10,units='ns')
+    await Timer(10,unit='ns')
     dut.s_axis_cartesian_tvalid.value = 0
-    await Timer(2000,units='ns')
+    await Timer(2000,unit='ns')
     dut._log.info(f"Output: 0x{dut.m_axis_dout_tdata.value.integer:x}")
     # dut._log.info(f"Output: 0b{dut.m_axis_dout_tdata.value.binstr}")
     dut.s_axis_cartesian_tvalid.value = 0
-    await Timer(30000,units='ns')
+    await Timer(30000,unit='ns')
     dut._log.info("done")
     
 

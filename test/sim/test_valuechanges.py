@@ -31,7 +31,7 @@ async def coro_a(dut):
 @cocotb.test()
 async def only_clockedge(dut):
 
-    cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
+    cocotb.start_soon( Clock(dut.clk,10,unit='ns').start() )
     cocotb.start_soon( coro_a(dut) )
     dut._log.info(f"Clock handle: {type(dut.clk._handle)}")
     dut.clk.value = 1

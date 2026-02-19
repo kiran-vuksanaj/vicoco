@@ -18,8 +18,8 @@ except ImportError:
 
 @cocotb.test()
 async def barebones_clock(dut):
-    cocotb.start_soon( Clock(dut.sender_clk,10,units='ns').start() )
-    cocotb.start_soon( Clock(dut.receiver_clk,12,units='ns').start() )
+    cocotb.start_soon( Clock(dut.sender_clk,10,unit='ns').start() )
+    cocotb.start_soon( Clock(dut.receiver_clk,12,unit='ns').start() )
     await Timer(3000,'ns')
 
 def test_xpm_fifo_tb():

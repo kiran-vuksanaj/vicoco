@@ -8,7 +8,7 @@ import os
 
 # from cocotb.runner import get_runner
 from vicoco.vivado_runner import get_runner
-from cocotb.binary import BinaryValue, LogicArray
+from cocotb.types import LogicArray
 from cocotb.clock import Clock
 
 try:
@@ -25,13 +25,13 @@ async def undefined_values(dut):
 @cocotb.test()
 async def cocotb_a(dut):
     dut.clk.value = 0
-    await Timer(300,units='ns')
+    await Timer(300,unit='ns')
     dut.clk.value = 1
-    await Timer(300,units='ns')
+    await Timer(300,unit='ns')
     dut._log.info(f"clock value: {dut.clk.value}")
     dut._log.info(f"value type: {type(dut.clk.value)}")
     dut.incr_in.value = LogicArray('Z')
-    await Timer(20,units='ns')
+    await Timer(20,unit='ns')
     dut._log.info(f"incr value: {dut.incr_in.value.binstr}")
     dut._log.info("done")
 
@@ -39,7 +39,7 @@ async def cocotb_a(dut):
 @cocotb.test()
 async def cocotb_b(dut):
 
-    cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
+    cocotb.start_soon( Clock(dut.clk,10,unit='ns').start() )
     dut.rst.value = 1
     dut.incr_in.value = 1
     await Timer(20,'ns')
@@ -56,7 +56,7 @@ async def cocotb_b(dut):
 
 @cocotb.test()
 async def using_edges(dut):
-    cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
+    cocotb.start_soon( Clock(dut.clk,10,unit='ns').start() )
     dut.rst.value = 1
     dut.incr_in.value = 0
     await RisingEdge(dut.clk)

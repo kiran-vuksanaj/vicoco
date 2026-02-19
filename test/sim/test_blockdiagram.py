@@ -15,7 +15,7 @@ import pytest
 
 @cocotb.test()
 async def barebones_clock(dut):
-    cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
+    cocotb.start_soon( Clock(dut.clk,10,unit='ns').start() )
     await Timer(3000,'ns')
 
 @pytest.mark.skipif(not("SAMPLE_BD" in os.environ), reason="full Vivado project not included in repo. specify SAMPLE_BD and SAMPLE_BD_WRAPPER to test a block diagram toplevel design.")

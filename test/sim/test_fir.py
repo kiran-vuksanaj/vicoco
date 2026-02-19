@@ -18,7 +18,7 @@ except ImportError:
 
 @cocotb.test()
 async def barebones_clock(dut):
-    cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
+    cocotb.start_soon( Clock(dut.clk,10,unit='ns').start() )
     await Timer(3000,'ns')
 
 def test_fir_tb():
