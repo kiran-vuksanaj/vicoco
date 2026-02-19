@@ -21,9 +21,9 @@ async def coro_a(dut):
     await RisingEdge(dut.incr_in)
     dut.secondary_in.value = 1
     dut._log.info(f"0 readonly, {get_sim_time('ns')}")
-    await ReadOnly()
+    # await ReadOnly()
     dut._log.info(f"1 readonly, {get_sim_time('ns')}")
-    await ReadOnly()
+    # await ReadOnly()
     dut._log.info(f"2 readonly, {get_sim_time('ns')}")
     # dut.secondary_in.value = 0
 
@@ -38,22 +38,22 @@ async def only_clockedge(dut):
     dut.rst.value = 1
     dut.incr_in.value = 0
     dut.secondary_in.value = 0
-    await ReadOnly()
-    dut._log.info(f"Clock value: {dut.clk.value.integer}")
+    # await ReadOnly()
+    dut._log.info(f"Clock value: {dut.clk.value}")
     await ClockCycles(dut.clk,2)
-    dut._log.info(f"Clock value: {dut.clk.value.integer}")
-    dut._log.info(f"Count out value: {dut.smallcount_out.value.integer}")
+    dut._log.info(f"Clock value: {dut.clk.value}")
+    dut._log.info(f"Count out value: {dut.smallcount_out.value.to_unsigned()}")
     dut.rst.value = 0
     dut.incr_in.value = 1
     dut._log.info(f"Setting incr in now")
     dut._log.info(f"Count out value: {dut.smallcount_out.value.integer}")
-    await ReadOnly()
+    # await ReadOnly()
     # await Timer(1,'ns')
     dut._log.info(f"Count out value: [post read-only] {dut.smallcount_out.value.integer}")
     await ClockCycles(dut.clk,10)
-    dut._log.info(f"Slow out value: {dut.slow_out.value.integer}")
+    dut._log.info(f"Slow out value: {dut.slow_out.value}")
     await RisingEdge(dut.slow_out)
-    dut._log.info(f"Slow out value: {dut.slow_out.value.integer}")
+    dut._log.info(f"Slow out value: {dut.slow_out.value}")
     
     dut._log.info(f"Finishing... {get_sim_time('ns')}")
     
