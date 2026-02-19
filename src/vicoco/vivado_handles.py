@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # minimally adapted from themperek/cocotb-vivado ; thank you!!
 
-MODULE = 0
-REG = 2
+import vicoco._gpi_enums as GPI_ENUMS
 
 import abc
 from collections.abc import Callable
 from typing import Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Type, Union, Any
+# from vicoco.gpi_emulation import gpi_cb_hdl, gpi_sim_hdl
 
-
-class XsimRootHandle(object):
+class XsimRootHandle():
     def __init__(self, mgr):
         self.mgr = mgr
 
@@ -17,7 +16,7 @@ class XsimRootHandle(object):
         return True
 
     def get_type(self):
-        return MODULE
+        return GPI_ENUMS.MODULE
 
     def get_name_string(self):
         return "top"
@@ -35,24 +34,31 @@ class XsimRootHandle(object):
         for name in self.mgr.ports:
             yield self.mgr.ports[name]
 
-    def get_handle_by_name(self, name):
+    def get_handle_by_name(self, name, discovery_method = 1):
         if name not in self.mgr.ports:
             return
 
         return self.mgr.ports[name]
 
-class XsiPortHandle(object):
+class XsiPortHandle():
     def __init__(self, mgr, name, size):
         self.name = name
 
         self.size = size
         self.mgr = mgr
 
+        if size == 1:
+            self.type_int = GPI_ENUMS.LOGIC
+            self.type_str = "LOGIC"
+        else:
+            self.type_int = GPI_ENUMS.LOGIC_ARRAY
+            self.type_str = "LOGIC_ARRAY"
+
     def get_const(self):
         return False
 
     def get_type(self):
-        return REG
+        return self.type_int
 
     def get_name_string(self):
         return self.name
@@ -95,7 +101,7 @@ class XsiPortHandle(object):
         value = int(value,2)
         return value
 
-class CbClosure(abc.ABC):
+class CbClosure():
     def __init__(self) -> None:
         self.cb: Union[Callable[[Any],None],None] = None
         self.ud: Any = None

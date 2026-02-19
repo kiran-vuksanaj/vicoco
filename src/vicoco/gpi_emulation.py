@@ -1,39 +1,117 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
+# restructured to match simulator.pyi in cocotb 2.0
+# note that unforunately this is a back-end API that
+# changes without notice
+
+from logging import Logger
+from typing import Any, Callable
+
+# from cocotb.handle import GPIDiscovery
+import abc
 
 # minimally adapted from themperek/cocotb-vivado ; thank you!!
-
 from vicoco.manager import XSimManager
 
-# ********************************************************************
-# * These constants are used by cocotb 'main'
-# ********************************************************************
-MODULE = 0
-STRUCTURE = 1
-REG = 2
-NET = 3
-NETARRAY = 4
-REAL = 5
-INTEGER = 6
-ENUM = 8
-STRING = 9
-GENARRAY = 10
+from vicoco._gpi_enums import *
 
-RISING = 11
-FALLING = 12
-VALUE_CHANGE = 13
-PACKED_STRUCTURE = 14
-LOGIC = 15
-LOGIC_ARRAY = 16
+class gpi_cb_hdl(abc.ABC):
+    def deregister(self) -> None: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
-PACKAGE = None
+class gpi_iterator_hdl(abc.ABC):
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
+    def __iter__(self) -> gpi_iterator_hdl: ...
+    def __next__(self) -> gpi_sim_hdl: ...
+
+class gpi_sim_hdl(abc.ABC):
+    def get_const(self) -> bool: ...
+    def get_definition_file(self) -> str: ...
+    def get_definition_name(self) -> str: ...
+    def get_handle_by_index(self, index: int) -> gpi_sim_hdl | None: ...
+    def get_handle_by_name(
+        self, name: str, discovery_method = 1 # TMP removing ref to cocotb internal
+    ) -> gpi_sim_hdl | None: ...
+    def get_indexable(self) -> bool: ...
+    def get_name_string(self) -> str: ...
+    def get_num_elems(self) -> int: ...
+    def get_range(self) -> tuple[int, int, int]: ...
+    def get_signal_val_binstr(self) -> str: ...
+    def get_signal_val_long(self) -> int: ...
+    def get_signal_val_real(self) -> float: ...
+    def get_signal_val_str(self) -> bytes: ...
+    def get_type(self) -> int: ...
+    def get_type_string(self) -> str: ...
+    def iterate(self, mode: int) -> gpi_iterator_hdl: ...
+    def set_signal_val_binstr(self, action: int, value: str) -> None: ...
+    def set_signal_val_int(self, action: int, value: int) -> None: ...
+    def set_signal_val_real(self, action: int, value: float) -> None: ...
+    def set_signal_val_str(self, action: int, value: bytes) -> None: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
+
+def get_precision() -> int: 
+    # HACK TODO hardcoded to picosecond precision...
+    return -12
+
+def get_root_handle(name: str | None) -> gpi_sim_hdl | None: 
+    return XSimManager.inst().get_root_handle()
+
+def get_sim_time() -> tuple[int, int]: 
+    time = XSimManager.inst().get_sim_time()
+    return (0,time) # ? maybe?
+
+def get_simulator_product() -> str:
+    return "vivado-xsim"
+
+def get_simulator_version() -> str:
+    return "???"
+
+def is_running() -> bool:
+    raise Exception("Nuh Uh")
+
+def set_gpi_log_level(level: int) -> None:
+    # skipping for now
+    pass
+
+def package_iterate() -> gpi_iterator_hdl: ...
+def register_nextstep_callback(func: Callable[..., Any], *args: Any) -> gpi_cb_hdl: ...
+def register_readonly_callback(func: Callable[..., Any], *args: Any) -> gpi_cb_hdl: ...
+def register_rwsynch_callback(func: Callable[..., Any], *args: Any) -> gpi_cb_hdl: ...
+def register_timed_callback(
+    time: int, func: Callable[..., Any], *args: Any
+) -> gpi_cb_hdl: ...
+def register_value_change_callback(
+    signal: gpi_sim_hdl, func: Callable[..., Any], edge: int, *args: Any
+) -> gpi_cb_hdl: ...
+def stop_simulator() -> None: ...
+
+class cpp_clock:
+    def __init__(self, signal: gpi_sim_hdl) -> None: ...
+    def start(
+        self, period_steps: int, high_steps: int, start_high: bool, set_action: int
+    ) -> None: ...
+    def stop(self) -> None: ...
+
+def clock_create(hdl: gpi_sim_hdl) -> cpp_clock: ...
+def initialize_logger(
+    log_func: Callable[[Logger, int, str, int, str, str], None],
+    get_logger: Callable[[str], Logger],
+) -> None:
+    pass
+
+def set_sim_event_callback(sim_event_callback: Callable[[str], None]) -> None: ...
 
 
 def log_msg(*args, **kwargs):
     raise Exception("Nuh Uh")
 
-
-def get_root_handle(root_name):
-    return XSimManager.inst().get_root_handle()
 
 def register_timed_callback(t, cb, ud):
     return XSimManager.inst().register_timed_cb(t,cb,ud)
@@ -64,21 +142,8 @@ def log_level(level):
     # TODO skipping 4 now
     pass
 
-def is_running(*args, **kwargs):
-    raise Exception("Nuh Uh")
 
-def get_sim_time():
-    time = XSimManager.inst().get_sim_time()
-    return (0,time) # ? maybe?
-
-def get_precision():
-    # HACK TODO hardcoded to picosecond precision...
-    return -12
-
-def get_simulator_product():
-    return "vivado xsim"
-
-def get_simulator_version():
-    return "???"
+def gpi_has_registered_impl():
+    return 1
 
 OBJECTS = []

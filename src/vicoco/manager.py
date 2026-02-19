@@ -96,6 +96,8 @@ class XSimManager:
             # print("Read Only callbacks: ",self._readonly_queue)
             # once this exits, there are no more readwrite stages
             # so readonly callbacks can run (cannot register value-sets)
+            if (not self.is_running):
+                break
             self._sim_advance(0)
             self._attempt_valuechange_callbacks()
             for cb in self._readonly_queue:
@@ -111,8 +113,16 @@ class XSimManager:
             next_time = min(self._timerqueue.keys())
             while(not(self._any_callbacks_primed( self._timerqueue[next_time] ))):
                 self._timerqueue.pop(next_time)
+                # this line gets reached now in a weirder way in cocotb 2.0?
+                # presumably final cb is getting properly unprimed now
+                if (len(self._timerqueue) == 0):
+                    next_time = None
+                    break
                 next_time = min(self._timerqueue.keys())
-                
+
+            if next_time == None:
+                continue
+            
             time_to_run = next_time - self.get_sim_time()
             self._sim_advance(time_to_run)
             # print("NEW TIME STEP",next_time)

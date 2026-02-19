@@ -2,6 +2,7 @@
 
 import importlib
 import sys
+import os
 
 from vicoco.manager import XSimManager
 
@@ -9,6 +10,11 @@ from vicoco.manager import XSimManager
 # we replace those with our gpi_emulation module, which hook back into our manager
 sys.modules["cocotb.simulator"] = importlib.import_module("vicoco.gpi_emulation")
 import cocotb
+cocotb.simulator = importlib.import_module("vicoco.gpi_emulation")
+# import vicoco.gpi_emulation as cocotb.simulator
+# print(sys.modules["cocotb.simulator"])
+print(cocotb.simulator)
+from pygpi.entry import load_entry
 
 from os import getenv
 
@@ -19,10 +25,13 @@ def _initialize_simulator(argv_):
     launch_mode = getenv("XSIM_INTERFACE",'XSI')
     sim_manager = XSimManager.init(launch_mode)
     sim_manager.start_simulator()
-
+    print("PYGPI_USERS:",os.getenv("PYGPI_USERS","???"))
     # TODO replace with proper reference to PYGPI_ENTRYPOINT / PYGPI_USERS
     # this is just the default value of that.
-    cocotb._initialise_testbench(argv_)
+    
+    # cocotb._initialise_testbench(argv_)
+    print(cocotb.simulator)
+    load_entry(argv_)
 
     sim_manager.run()
     
