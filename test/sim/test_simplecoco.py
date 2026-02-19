@@ -32,7 +32,7 @@ async def cocotb_a(dut):
     dut._log.info(f"value type: {type(dut.clk.value)}")
     dut.incr_in.value = LogicArray('Z')
     await Timer(20,unit='ns')
-    dut._log.info(f"incr value: {dut.incr_in.value.binstr}")
+    dut._log.info(f"incr value: {dut.incr_in.value}")
     dut._log.info("done")
 
 
@@ -51,7 +51,7 @@ async def cocotb_b(dut):
         assert(count_out_val==i)
         await Timer(10,'ns')
     dut._log.info( f'cordic_out: {dut.cordic_out.value.binstr}' )
-    dut._log.info( f'cordic_valid: {dut.cordic_valid.value.binstr}' )
+    dut._log.info( f'cordic_valid: {dut.cordic_valid.value}' )
 
 
 @cocotb.test()

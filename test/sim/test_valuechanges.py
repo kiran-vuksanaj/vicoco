@@ -46,10 +46,10 @@ async def only_clockedge(dut):
     dut.rst.value = 0
     dut.incr_in.value = 1
     dut._log.info(f"Setting incr in now")
-    dut._log.info(f"Count out value: {dut.smallcount_out.value.integer}")
+    dut._log.info(f"Count out value: {dut.smallcount_out.value.to_unsigned()}")
     # await ReadOnly()
     # await Timer(1,'ns')
-    dut._log.info(f"Count out value: [post read-only] {dut.smallcount_out.value.integer}")
+    dut._log.info(f"Count out value: [post read-only] {dut.smallcount_out.value.to_unsigned()}")
     await ClockCycles(dut.clk,10)
     dut._log.info(f"Slow out value: {dut.slow_out.value}")
     await RisingEdge(dut.slow_out)
