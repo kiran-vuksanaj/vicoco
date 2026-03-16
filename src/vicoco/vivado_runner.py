@@ -6,7 +6,7 @@ from typing import Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Type,
 PathLike = Union["os.PathLike[str]", str]
 Command = List[str]
 Timescale = Tuple[str, str]
-from cocotb.runner import VHDL,Verilog
+from cocotb.runner import VHDL,Verilog,Simulator
 import warnings 
 
 import subprocess
@@ -17,8 +17,8 @@ import csv
 
 import logging
 
-file_dump_waves = """
-`timescale 1ns / 1ps
+FILE_DUMP_WAVES = """
+{timescale_declaration}
 module cocotb_vivado_dump();
   initial begin
     $dumpfile("{waveform_filename}");
@@ -27,18 +27,45 @@ module cocotb_vivado_dump();
 endmodule
 """
 
-class Vivado(cocotb.runner.Simulator):
+class Vivado(Simulator):
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
 
-    def __init__(self,mode,
-            xilinx_root=None,
-            part_num=None,
-            xilinx_extra_libraries = [],
-            fst_output = True,
-            validate_flags = True,
-            extra_global_modules = [] 
+    def __init__(
+            self,
+            mode: str = 'XSI',
+            xilinx_root: Optional[str] = None,
+            part_num: Optional[str] = None,
+            xilinx_extra_libraries: List[str] = [],
+            fst_output: bool = True,
+            validate_flags: bool = True,
+            extra_global_modules: List[str] = [] 
             ):
+        """
+        Initialize the Vivado Python runner.
+        xilinx_root:
+            Optional manual specification of root xilinx vivado path.
+            if unspecified, $XILINX_VIVADO is checked instead.
+        part_num:
+            Part number to be used for default IP generation from XCI
+            files. if unspecified, $VICOCO_PART_NUM is checked instead,
+            and if still unspecified we default to the part in an Arty S7;
+            the xc7s50-csga324-1.
+        xilinx_extra_libraries:
+            List of additional libraries to include when elaborating
+            the design. All necessary libraries for specified IP will
+            be included by default.
+        fst_output:
+            If outputting a waveform file, the VCD file will be converted
+            to an FST file. Requires use of vcd2fst, from gtkwave. Default
+            value is True, if vcd2fst is found.
+        validate_flags:
+            enable additional warnings regarding common flags used in other
+            simulators, and exclude them from Vivado flags. Default True
+        extra_global_modules:
+            Additional modules to elaborate with in the `xelab` command.
+        """
+        
         self.launch_mode = mode
 
         self.xilinx_libraries = set(xilinx_extra_libraries)
@@ -47,12 +74,9 @@ class Vivado(cocotb.runner.Simulator):
 
         self.elab_modules = list(extra_global_modules)
 
-        if xilinx_root is not None:
-            self.xilinx_root = xilinx_root
-        else:
-            self.xilinx_root = environ.get('XILINX_VIVADO',None)
-
-        self.part_num = part_num
+        self.xilinx_root = xilinx_root or environ.get('XILINX_VIVADO',None)
+        
+        self.part_num = part_num or environ.get('VICOCO_PART_NUM','xc7s50-csga324-1')
 
         self.log = logging.getLogger("vicoco.vivado_runner")
         logging.basicConfig()
@@ -60,163 +84,205 @@ class Vivado(cocotb.runner.Simulator):
         super().__init__()
 
 
+    def _timescale_declaration(self) -> str:
+        """
+        Verilog declaration of timescale matching to specified build/test timescale arg
+        """
+        timescale = self.timescale
+        if timescale is None:
+            return ""
+        assert isinstance(timescale,tuple)
+        assert len(timescale) == 2
+        stepsize,precision = timescale
+        return f"`timescale {stepsize} / {precision}"
+        
     
     def _simulator_in_path(self) -> None:
-        # if 'XILINX_VIVADO' not in environ:
+        """
+        Raise error if an installation of Vivado is not specified
+        """
         if self.xilinx_root is None:
-            raise Warning("WARNING: Vivado not found in path. Run {VIVADO}/settings64.sh if you haven't, or specify get_runner('vivado',xilinx_root={INSTALL_DIRECTORY}).")
+            raise SystemExit(
+                "ERROR: Vivado not found in path. Run {VIVADO}/settings64.sh if you haven't, or specify get_runner('vivado',xilinx_root={INSTALL_DIRECTORY})."
+            )
 
-    def _full_path(self,vivado_cmd):
+    def _vivado_exec_path(self,vivado_cmd) -> str:
+        """Returns full path string to the specified ``vivado_cmd`` in the specified xilinx_root"""
         return str(Path(self.xilinx_root) / 'bin' / vivado_cmd)
         
-    def _file_info_to_parse(self, file_info,working_dir):
+
+    def _outofdate_ip(self,ip_files: Sequence[PathLike]) -> Sequence[PathLike]:
         """
-        converts list of traits as written in a "file_info.txt" file to a command to compile the file
-
+        Given list of XCI/BD files, returns a filtered list of files
+        which have been modified more recently than their associated
+        generated files.
         """
-        if(len(file_info) == 5):
-             filename, language, output_lib, filepath, include_dirs = file_info
-        else:
-            filename, language, output_lib, filepath = file_info
-            include_dirs = ""
-        cmd = []
+        def ip_file_outofdate(ip_file: PathLike) -> bool:
+            ip_file = Path(ip_file).resolve()
+            ip_name = ip_file.stem
+            # this is a file that [seems to be] generated with every IP generation
+            # used to compare modify times of generated files and source XCI/BD file
+            sample_ip_user_file = self.build_dir.joinpath(
+                ".ip_user_files",
+                "sim_scripts",
+                ip_name,
+                "xsim",
+                "README.txt"
+                )
 
-        language = language.lower()
-        if language == "systemverilog":
-            cmd += [self._full_path('xvlog'), '-sv', '--incr', '--relax']
-        elif language == "verilog":
-            cmd += [self._full_path('xvlog'), '--incr', '--relax']
-        elif language == "vhdl":
-            cmd += [self._full_path('xvhdl'), '--incr', '--relax']
+            return cocotb.runner.outdated(sample_ip_user_file,[ip_file])
 
-        cmd += ['-work',f'{output_lib}=xsim.dir/{output_lib}']
-
-        absolute_path = working_dir / filepath
-
-        if "/tools/Xilinx" in filepath:
-            real_start = filepath.index("/tools/Xilinx")
-            filepath = filepath[real_start:]
-            absolute_path = Path(filepath)
-        
-        absolute_path = absolute_path.resolve()
-        cmd += [str(absolute_path)]
-
-        if (language != "vhdl"):
-            include_dirs = include_dirs.split("incdir=")
-            for dirname in include_dirs:
-                dirname = dirname.strip('\'"')
-                if (len(dirname)>0):
-                    absolute_path = working_dir / dirname
-                    absolute_path = absolute_path.resolve()
-
-                    cmd += ['-i', str(absolute_path)]
-
-        # print(cmd)
-        return cmd
-        
-
-    def _outofdate_ip(self,xci_files: Sequence[PathLike]) -> Sequence[PathLike]:
-
-        # if self.always:
-        #     return xci_files
-
-        outofdate = []
-        
-        for xci_file in xci_files:
-
-            xci_file = Path(xci_file).resolve()
-            ip_name = xci_file.stem
-            sample_ip_user_file = self.build_dir / ".ip_user_files" / "sim_scripts" / ip_name / "xsim" / "README.txt"
-
-            if cocotb.runner.outdated(sample_ip_user_file,[xci_file]):
-                outofdate.append(xci_file)
-
+        outofdate = [ip_file for ip_file in ip_files if ip_file_outofdate(ip_file)]
         self.log.info("Out Of Date: ",outofdate)
         return outofdate
+
+    def _execute_tcl(self,tcl_file: PathLike) -> None:
+        """
+        Calls Vivado to execute the specified TCL file in batch mode.
+        """
+        tcl_file = Path(tcl_file).resolve()
+        self._execute([[
+            self._vivado_exec_path('vivado'),
+            '-mode','batch',
+            '-source',str(tcl_file)
+            ]], cwd=self.build_dir)
+
+    
+    
+    def _write_generation_tcl(self, ip_files: Sequence[PathLike]) -> None:
+        """
+        Writes file at $BUILD_DIR/build_ip.tcl to generate the specified IP files.
+        Returns the path of the generated TCL file.
+        """
+        generated_file_path = self.build_dir / "build_ip.tcl"
+        with open(generated_file_path,"w") as f:
+            f.write(f"set partNum {self.part_num}\n")
+            f.write("set_part $partNum\n")
+
+            for ip_path in ip_files:
+                f.write(f"add_files -norecurse {ip_path}\n")
+                # f.write(f"read_ip {xci_path}\n")
+            f.write("export_ip_user_files\n")
+        return generated_file_path
+
+    def _parse_file_info(self,file_info_file: PathLike) -> List[Dict[str,str]]:
+        """
+        Reads a file_info.txt file and yields a list of labeled attributes
+        for each entry in the file.
+        """
+        def row_to_labeled_attributes(row):
+            entry = {}
+            entry['module_filename'] = row[0]
+            entry['module_name'] = row[0][:row[0].index('.')]
+            entry['language'] = row[1]
+            entry['library'] = row[2]
+            entry['source_path'] = row[3]
+            if len(row) > 4:
+                # rooted at weird location, keep in mind...
+                entry['incdir'] = row[4]
+            return entry
         
-    def _ip_synth_cmds(self, xci_files: Sequence[PathLike]) -> Sequence[Command]:
+        with open(str(file_info_file),newline='') as f:
+            reader = csv.reader(f)
+            return [ row_to_labeled_attributes(row) for row in reader ]
+
+    def _compile_cmd(self,src_file: PathLike, language: str, prj=False) -> Command:
         """
-        file-generation + commands in order to synthesize ip for simulation
+        Returns command to compile the specified ``src_file``.
+        """
+        src_file = Path(src_file).resolve()
+        language_compiler = {
+            'vhdl': self._vivado_exec_path('xvhdl'),
+            'verilog': self._vivado_exec_path('xvlog')
+            }
+        
+        compile_exec = language_compiler[language]
+        cmd = [compile_exec, '--incr', '--relax']
+        if prj:
+            cmd += ['-prj']
+        elif src_file.suffix == '.sv':
+            cmd += ['-sv']
+        cmd += [str(src_file)]
+
+        if language == 'verilog':
+            cmd += self._get_include_options(self.includes)
+
+        return cmd
+            
+            
+    
+    def _ip_filename_cmds(self, ip_file: PathLike) -> Sequence[Command]:
+        """
+        Returns appropriate compilation commands for specified XCI/BD file,
+        and adds appropriate elaboration libraries + additional modules for
+        the elaboration stage.
         """
 
-        if self.part_num == None:
-            partNum = "xc7s50csga324-1"
-        else:
-            partNum = self.part_num
+        ip_name = Path(ip_file).stem
 
-        # build tiny vivado script to usep
+        # we look in a handful of locations for the appropriate info
+        # 1. any non-xsim "file_info.txt" file holds the appropriate
+        #    files to include
+        # 2. the xsim "file_info.txt" file indicates whether the
+        #    Verilog glbl.v module should be elaborated
+        # 3. the xsim "vhdl.prj" and "vlog.prj" can be compiled
+        #    by xvhdl and xvlog for all necessary direct source files
+        
+        ip_user_root = self.build_dir / '.ip_user_files'
+
+        vcs_script_root = ip_user_root / 'sim_scripts' / ip_name / 'vcs'
+        vcs_file_info = self._parse_file_info( vcs_script_root / 'file_info.txt' )
+
+        ip_libraries = set( (row['library'] for row in vcs_file_info) )
+        self.xilinx_libraries.update(ip_libraries)
+
+        xsim_script_root = ip_user_root / 'sim_scripts' / ip_name / 'xsim'
+        xsim_file_info = self._parse_file_info(xsim_script_root / 'file_info.txt')
+
+        for row in xsim_file_info:
+            if 'glbl' in row['module_name']:
+                self.elab_modules.append(f"{row['library']}.{row['module_name']}")
+
+        ip_cmds = []
+        vhdl_proj = xsim_script_root / 'vhdl.prj'
+        vlog_proj = xsim_script_root / 'vlog.prj'
+
+        if vhdl_proj.exists():
+            ip_cmds.append( self._compile_cmd(vhdl_proj, 'vhdl', prj=True) )
+        if vlog_proj.exists():
+            ip_cmds.append( self._compile_cmd(vlog_proj, 'verilog', prj=True) )
+
+        return ip_cmds
+        
+    def _ip_synth_cmds(self, ip_files: Sequence[PathLike]) -> Sequence[Command]:
+        """
+        Given a list of XCI/BD files, returns a sequence of commands to generate
+        and compile the specified IP.
+
+        This function also modifies state so that relevant libraries are included in
+        elaboration calls.
+        """
+        # build tiny vivado script to use to generate all out of date IP
 
         ip_cmds: Sequence[Command] = []
 
-        outdated_xci_files = self._outofdate_ip(xci_files)
+        outdated_ip_files = self._outofdate_ip(ip_files)
 
-        if (len(outdated_xci_files) > 0):
-            with open(self.build_dir / "build_ip.tcl","w") as f:
-                f.write(f"set partNum {partNum}\n")
-                f.write("set_part $partNum\n")
-
-                for xci_path in outdated_xci_files:
-                    f.write(f"add_files -norecurse {xci_path}\n")
-                    # f.write(f"read_ip {xci_path}\n")
-                f.write("export_ip_user_files\n")
-            self._execute( [[self._full_path('vivado'), '-mode', 'batch', '-source', 'build_ip.tcl']], cwd=self.build_dir)
-
+        # if there are outdated IP files, write and execute TCL to re-generate
+        if (len(outdated_ip_files) > 0):
+            generate_ip_tcl = self._write_generation_tcl(outdated_ip_files)
+            self._execute_tcl(generate_ip_tcl)
         
-        ip_user_root = self.build_dir / '.ip_user_files'
-        
-        # Move mem_init_files directory contents to build directory to be accessed during simulation
-        mem_init_files = glob( str(ip_user_root/'mem_init_files'/'*') )
+
+        # IP compilation expects contents of mem_init_files/ directory
+        # to be present in the cwd; so, we copy those files to the build_dir
+        mem_init_files = glob( str(self.build_dir/'.ip_user_files'/'mem_init_files'/'*') )
         if (len(mem_init_files) > 0):
             self._execute( [['cp'] + mem_init_files + ['.']], cwd=self.build_dir)
         
-
-        for xci_filename in xci_files:
-            xci_as_path = Path(xci_filename)
-            ip_name = xci_as_path.stem
-            print("IP Name:", ip_name)
-
-
-            # ipstatic = ip_user_root / 'ipstatic' / 'ip'
-            # for child in ipstatic.iterdir():
-            #     if child.is_dir():
-            #         dir_to_include = child / 'hdl'
-            #         self.includes.append(str(dir_to_include))
-
-            vcs_script_root = ip_user_root / 'sim_scripts' / ip_name / 'vcs'
-            vcs_file_info = vcs_script_root / 'file_info.txt'
-
-            with open(str(vcs_file_info),newline='') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    library_name = row[2]
-                    self.xilinx_libraries.add( library_name )
-
-            xsim_script_root = ip_user_root / 'sim_scripts' / ip_name / 'xsim'
-
-            xsim_file_info = xsim_script_root / 'file_info.txt'
-            with open(str(xsim_file_info),newline='') as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    module_name = row[0]
-                    library_name = row[2]
-                    module_name = module_name[:module_name.index('.')]
-                    # if module_name != ip_name:
-                        # self.elab_modules.append(f"{library_name}.{module_name}")
-                    if "glbl" in module_name:
-                        self.elab_modules.append(f"{library_name}.{module_name}")
-                    # ip_cmds.append ( self._file_info_to_parse(row,xsim_script_root) )
-
-            
-            vhdl_proj = xsim_script_root / 'vhdl.prj'
-            vlog_proj = xsim_script_root / 'vlog.prj'
-
-            if vhdl_proj.exists():
-                ip_cmds.append( [self._full_path('xvhdl'),'--incr','--relax','-prj',str(vhdl_proj)] )
-            if vlog_proj.exists():
-                ip_cmds.append( [self._full_path('xvlog'),'--incr','--relax','-prj',str(vlog_proj)] + self._get_include_options(self.includes) )
-
-            # ip_cmds.append( ['sh','-c', f"cd {xsim_script_root} && ./{ip_name}.sh -step compile"] )
-
+        for ip_filename in ip_files:
+            ip_cmds.extend( self._ip_filename_cmds(ip_filename) )
+        
         return ip_cmds
 
     def _get_include_options(self, includes):
@@ -226,6 +292,10 @@ class Vivado(cocotb.runner.Simulator):
         return out
 
     def _write_wavedump_file(self):
+        """
+        Write dummy Verilog file to initialize wavedump to VCD/FST formats,
+        according to flags specified at initialization
+        """
 
         toplevel = self.hdl_toplevel
         if "." in toplevel:
@@ -234,9 +304,13 @@ class Vivado(cocotb.runner.Simulator):
         self.waveform_filename = str(self.build_dir / f'{toplevel}.vcd')
         if self.fst_output:
             self.waveform_filename = self.waveform_filename.replace('.vcd','.fst')
-        self.log.info(f"waveform output to {self.waveform_filename}")
+        self.log.info(f"Waveform output to {self.waveform_filename}")
         
-        file_text = file_dump_waves.format(waveform_filename=self.waveform_filename,toplevel=toplevel)
+        file_text = FILE_DUMP_WAVES.format(
+            waveform_filename=self.waveform_filename,
+            toplevel=toplevel,
+            timescale_declaration=self._timescale_declaration()
+        )
         file_name = self.build_dir / "cocotb_vivado_dump.v"
         with open(file_name,'w') as f:
             f.write(file_text)
@@ -251,15 +325,32 @@ class Vivado(cocotb.runner.Simulator):
             out.extend(['-d',f'{key}={val}'])
         return out
         
-    def _issue_build_warnings(self):
+    def _issue_build_warnings(self) -> None:
+        """
+        Issue special warnings to be aware of when building with Vicoco at the
+        compile/elaborate stage.
+        """
         if (self.waves and len(self.parameters) > 0):
-            self.log.warning("Known Vicoco issue: when top-level parameters are set by Python, Vicoco doesn't successfully yield a VCD/FST waveform output. A Vivado WDB file will still be available. Setting waves=False and manually creating a waveform file using Verilog $dumpfile/$dumpvars commands in your top-level is a workable alternative.\n")
+            self.log.warning(
+                "Known Vicoco issue: when top-level parameters are set by Python, Vicoco doesn't "\
+                "successfully yield a VCD/FST waveform output. A Vivado WDB file will still be "\
+                "available. Setting waves=False and manually creating a waveform file using "\
+                "Verilog $dumpfile/$dumpvars commands in your top-level is a workable alternative.\n"
+            )
         if (self.validate_flags and '-Wall' in self.build_args):
-            self.log.warning("Build arg -Wall is not valid for Vivado simulation. -Wall will be removed from build_args list. To disable this behavior/warning, set runner.validate_flags to False.")
+            self.log.warning(
+                "Build arg -Wall is not valid for Vivado simulation. -Wall will be removed "\
+                "from build_args list. To disable this behavior/warning, set "\
+                "runner.validate_flags to False."
+            )
             self.build_args.remove('-Wall')
 
 
-    def _issue_test_warnings(self):
+    def _issue_test_warnings(self) -> None:
+        """
+        Issue special warnings to be aware of when building with Vicoco at the
+        simulation launching stage
+        """
         if (self.waves and self.hdl_toplevel_lang == "vhdl"):
             self.log.warning("Vicoco limitation: VCD/FST waveform output can't be generated on VHDL top level designs. A Vivado WDB file will still be generated. runner.waves will be set to False.\n")
             self.waves = False
@@ -268,12 +359,9 @@ class Vivado(cocotb.runner.Simulator):
         self._issue_build_warnings()
 
         define_args = self._define_args()
-        
 
         self.xilinx_libraries.add( 'xpm' )
         self.xilinx_libraries.add( 'secureip' )
-
-
 
         if self.waves:
             self._write_wavedump_file()
@@ -285,13 +373,12 @@ class Vivado(cocotb.runner.Simulator):
         vhdl_build_args = ["{}".format(arg) for arg in self.build_args if type(arg) in (str,VHDL)]
 
         for source in self.sources:
+            source = Path(source)
             if cocotb.runner.is_verilog_source(source):
-                # TODO maybe should be redone for a .v file ending?
-                cmds.append([self._full_path('xvlog'),'-sv', '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + verilog_build_args)
+                cmds.append( self._compile_cmd( source, 'verilog' ) + define_args + verilog_build_args )
             elif cocotb.runner.is_vhdl_source(source):
-                cmds.append([self._full_path('xvhdl'), '--incr', '--relax', str(source)] + self._get_include_options(self.includes) + define_args + vhdl_build_args)
-            elif ".xci" in str(source) or ".bd" in str(source):
-                # JANK as fuck
+                cmds.append( self._compile_cmd( source, 'vhdl' ) + define_args + vhdl_build_args )
+            elif source.suffix in {'.bd','.xci'}:
                 ip_sources.append(str(source))
             else:
                 raise ValueError(
@@ -301,16 +388,12 @@ class Vivado(cocotb.runner.Simulator):
 
         if len(ip_sources) > 0:
             cmds.extend( self._ip_synth_cmds(ip_sources) )
-        # cmds.append(['vivado', '-mode', 'batch', '-source', 'build_ip.tcl'])
-        # cmds.append(['xvhdl', '--incr', '--relax', '-prj', '.ip_user_files/sim_scripts/cordic_0/xsim/vhdl.prj'])
-        # cmds.append
-        # cmds.append(['xvhdl','--incr', '--relax', '-prj', '/home/kiranv/Documents/fpga/vivgui/getfifos/getfifos.ip_user_files/sim_scripts/cordic_0/xsim/vhdl.prj'])
 
-
+        # construct xelab command
+        
         self.snapshot_name = "pybound_sim"
         param_args = self._get_parameter_options(self.parameters)
-
-        elab_cmd = [self._full_path("xelab"),
+        elab_cmd = [self._vivado_exec_path("xelab"),
                     "-top", self.hdl_toplevel,
                     "-snapshot", "pybound_sim",
                     ] + self._get_include_options(self.includes) + define_args + param_args
@@ -337,12 +420,14 @@ class Vivado(cocotb.runner.Simulator):
             ["python3", "-m", "vicoco"]
         ]
 
+        # set environment for launching vicoco
         xilinx_root = self.xilinx_root
         self.env["LD_LIBRARY_PATH"] = f"{xilinx_root}/lib/lnx64.o:{xilinx_root}/lib/lnx64.o/Default:"
         self.env["VIVADO_SNAPSHOT_NAME"] = "pybound_sim"
         self.env["TOPLEVEL_LANG"] = self.hdl_toplevel_lang
         self.env["XSIM_INTERFACE"] = self.launch_mode
 
+        # conversion from vcd to fst, if necessary
         if self.waves and self.fst_output:
             cmd.append(["vcd2fst", self.waveform_filename, self.waveform_filename])
         
@@ -353,51 +438,18 @@ class Vivado(cocotb.runner.Simulator):
         for param,val in parameters.items():
             param_options.extend(["-generic_top","{}={}".format(param,str(val))])
         return param_options
+    
 
-def get_runner(simulator_name: str, **kwargs) -> cocotb.runner.Simulator:
+def get_runner(simulator_name: str, **kwargs) -> Simulator:
     """
-    this is... pretty jank. manually add 'vivado' to the list of supported sims
+    Wrapper for the native get_runner function, which initializes the
+    Vivado runner if the 'vivado' simulator name is specified. Otherwise,
+    calls the original cocotb ``get_runner`` function.
     """
 
     if simulator_name == "vivado":
-        return Vivado('XSI',**kwargs)
+        return Vivado(**kwargs)
     elif simulator_name == "vivado_tcl":
-        return Vivado('TCL')
+        return Vivado(mode='TCL',**kwargs)
     else:
         return cocotb.runner.get_runner(simulator_name)
-
-
-def makefile_recreate():
-    """
-    match what the makefile does, so as to motivate the proper functions for the runner type
-    """
-
-    sources = ["counter.sv", "counter_tb.sv"]
-
-    toplevel = "counter"
-    snapshot_name = "pybound_sim"
-
-    module = "simple_cocotbtest"
-
-    for source in sources:
-        compile_source_cmd = ["xvlog", "-sv", source]
-        status = subprocess.run(compile_source_cmd)
-        print(f'compile {source} status: {status}')
-
-    elab_cmd = ["xelab", "-top", toplevel, "-snapshot", snapshot_name, "-debug", "wave", "-dll"]
-    status = subprocess.run(elab_cmd)
-    print(f'elaborate status: {status}')
-
-    new_env = environ
-    xilinx_root = environ["XILINX_VIVADO"]
-    new_env["LD_LIBRARY_PATH"] = f"{xilinx_root}/lib/lnx64.o:{xilinx_root}/lib/lnx64.o/Default:"
-    new_env["SNAPSHOT_NAME"] = "pybound_sim"
-    new_env["MODULE"] = module
-    
-    launch_cmd = ["python3", "-m", "vicoco"]
-    status = subprocess.run(launch_cmd, env=new_env)
-    print(f'launch status: {status}')
-
-
-if __name__=="__main__":
-    makefile_recreate()
