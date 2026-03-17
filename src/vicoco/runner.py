@@ -34,6 +34,7 @@ class Vivado(Simulator):
     """
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
+    LAUNCHING_MODULE = "vicoco"
 
     def __init__(
             self,
@@ -52,7 +53,7 @@ class Vivado(Simulator):
             if unspecified, $XILINX_VIVADO is checked instead.
         part_num:
             Part number to be used for default IP generation from XCI
-            files. if unspecified, $VICOCO_PART_NUM is checked instead,
+            files. if unspecified, $COCOTB_DEFAULT_PART_NUM is checked instead,
             and if still unspecified we default to the part in an Arty S7;
             the xc7s50-csga324-1.
         xilinx_extra_libraries:
@@ -80,12 +81,12 @@ class Vivado(Simulator):
 
         self.xilinx_root = xilinx_root or environ.get('XILINX_VIVADO',None)
 
-        self.part_num = part_num or environ.get('VICOCO_PART_NUM','xc7s50-csga324-1')
+        self.part_num = part_num or environ.get('COCOTB_DEFAULT_PART_NUM','xc7s50-csga324-1')
         self.waveform_filename = ""
         self.snapshot_name = "pybound_sim"
         self.waves = False
 
-        self.log = logging.getLogger("vicoco.vivado_runner")
+        self.log = logging.getLogger(__name__)
         logging.basicConfig()
 
         super().__init__()
@@ -286,7 +287,7 @@ class Vivado(Simulator):
         # to be present in the cwd; so, we copy those files to the build_dir
         mem_init_files = glob( str(self.build_dir/'.ip_user_files'/'mem_init_files'/'*') )
         if len(mem_init_files) > 0:
-            self._execute( [['cp', mem_init_files,'.']], cwd=self.build_dir)
+            self._execute( [['cp', *mem_init_files,'.']], cwd=self.build_dir)
 
         for ip_filename in ip_files:
             ip_cmds.extend( self._ip_filename_cmds(ip_filename) )
@@ -433,7 +434,7 @@ class Vivado(Simulator):
         self._issue_test_warnings()
 
         cmd = [
-            ["python3", "-m", "vicoco"]
+            ["python3", "-m", self.LAUNCHING_MODULE]
         ]
 
         # set environment for launching vicoco
