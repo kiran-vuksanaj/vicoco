@@ -79,6 +79,8 @@ class Vivado(Simulator):
 
         self.elab_modules = list(extra_global_modules or [])
 
+        self.exported_simulations = []
+
         self.xilinx_root = xilinx_root or environ.get('XILINX_VIVADO',None)
 
         self.part_num = part_num or environ.get('COCOTB_DEFAULT_PART_NUM','xc7s50-csga324-1')
@@ -145,18 +147,32 @@ class Vivado(Simulator):
         self.log.info("Out Of Date: %s",outofdate)
         return outofdate
 
-    def _execute_tcl(self,tcl_file: PathLike) -> None:
+    def execute_tcl(
+            self,
+            tcl_file: PathLike,
+            result_file: PathLike|None = None,
+            tcl_mode: str = 'batch'
+    ) -> None:
         """
-        Calls Vivado to execute the specified TCL file in batch mode.
+        Calls Vivado to execute the specified TCL file in batch mode. If result_file is specified,
+        only run the TCL script if it's been modified more recently than result_file.
         """
+        tcl_file = Path(tcl_file)
+
+        assert tcl_file.exists(), f"TCL file {tcl_file} does not exist"
+
+        if result_file and not runner.outdated(Path(result_file),[tcl_file]):
+            return
+        
         tcl_file = Path(tcl_file).resolve()
         self._execute([[
             self._vivado_exec_path('vivado'),
-            '-mode','batch',
+            '-mode',tcl_mode,
             '-source',str(tcl_file)
             ]], cwd=self.build_dir)
 
-
+    def add_export_simulation_tcl(self,tcl_file,result_dir,result_file=None,mode="batch"):
+        self.exported_simulations.append((tcl_file,mode,result_file,result_dir))
 
     def _write_generation_tcl(self, ip_files: Sequence[PathLike]) -> None:
         """
@@ -226,9 +242,11 @@ class Vivado(Simulator):
         and adds appropriate elaboration libraries + additional modules for
         the elaboration stage.
         """
-
         ip_name = Path(ip_file).stem
+        ip_sim_scripts = self.build_dir / '.ip_user_files' / 'sim_scripts' / ip_name
+        return self._ip_dir_cmds(ip_sim_scripts)
 
+    def _ip_dir_cmds(self, ip_sim_scripts: PathLike) -> Sequence[Command]:
         # we look in a handful of locations for the appropriate info
         # 1. any non-xsim "file_info.txt" file holds the appropriate
         #    files to include
@@ -236,16 +254,15 @@ class Vivado(Simulator):
         #    Verilog glbl.v module should be elaborated
         # 3. the xsim "vhdl.prj" and "vlog.prj" can be compiled
         #    by xvhdl and xvlog for all necessary direct source files
-
-        ip_user_root = self.build_dir / '.ip_user_files'
-
-        vcs_script_root = ip_user_root / 'sim_scripts' / ip_name / 'vcs'
+        ip_sim_scripts = Path(ip_sim_scripts)
+        
+        vcs_script_root = ip_sim_scripts / 'vcs'
         vcs_file_info = self._parse_file_info( vcs_script_root / 'file_info.txt' )
 
         ip_libraries = {row['library'] for row in vcs_file_info}
         self.xilinx_libraries.update(ip_libraries)
 
-        xsim_script_root = ip_user_root / 'sim_scripts' / ip_name / 'xsim'
+        xsim_script_root = ip_sim_scripts / 'xsim'
         xsim_file_info = self._parse_file_info(xsim_script_root / 'file_info.txt')
 
         for row in xsim_file_info:
@@ -280,7 +297,7 @@ class Vivado(Simulator):
         # if there are outdated IP files, write and execute TCL to re-generate
         if len(outdated_ip_files) > 0:
             generate_ip_tcl = self._write_generation_tcl(outdated_ip_files)
-            self._execute_tcl(generate_ip_tcl)
+            self.execute_tcl(generate_ip_tcl)
 
 
         # IP compilation expects contents of mem_init_files/ directory
@@ -403,6 +420,12 @@ class Vivado(Simulator):
 
         if len(ip_sources) > 0:
             cmds.extend( self._ip_synth_cmds(ip_sources) )
+
+        for tcl_file,mode,result_file,scripts_dir in self.exported_simulations:
+            full_result_file = self.build_dir / Path(result_file) if result_file else None
+            self.execute_tcl(tcl_file,result_file=full_result_file,tcl_mode=mode)
+            full_scripts_dir = self.build_dir / Path(scripts_dir)
+            cmds.extend( self._ip_dir_cmds(full_scripts_dir) )
 
         # construct xelab command
 
