@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 
 # from cocotb.runner import get_runner
-from vicoco.vivado_runner import get_runner
+from vicoco.runner import get_runner
 from cocotb.clock import Clock
 
 import logging

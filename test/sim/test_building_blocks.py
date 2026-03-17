@@ -26,7 +26,7 @@ async def put_values_clocks(dut):
 
 from pathlib import Path
 # from cocotb.runner import get_runner
-from vicoco.vivado_runner import get_runner,VHDL,Verilog
+from vicoco.runner import get_runner,VHDL,Verilog
 
 def test_building_blocks():
     this_file = Path(__file__).resolve()

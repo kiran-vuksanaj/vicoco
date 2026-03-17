@@ -19,7 +19,7 @@ async def clocks_only(dut):
     await Timer(200,units='ns')
 
 
-from vicoco.vivado_runner import get_runner
+from vicoco.runner import get_runner
 from pathlib import Path
 import os
 

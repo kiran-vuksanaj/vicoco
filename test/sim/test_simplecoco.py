@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 
 # from cocotb.runner import get_runner
-from vicoco.vivado_runner import get_runner
+from vicoco.runner import get_runner
 from cocotb.binary import BinaryValue, LogicArray
 from cocotb.clock import Clock
 
@@ -80,12 +80,14 @@ def test_completetb():
     hdl_toplevel_lang = "verilog"
     toplevel = "counter"
     runner = get_runner(sim)
+    build_args = ['-Wall']
 
     runner.build(
         sources=sources,
         hdl_toplevel=toplevel,
         always=True,
         timescale = ('1ns','1ps'),
+        build_args=build_args,
         waves=True)
     runner.test(
         hdl_toplevel=toplevel,
