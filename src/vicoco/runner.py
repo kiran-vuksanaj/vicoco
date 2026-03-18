@@ -455,7 +455,7 @@ class Vivado(Simulator):
         toplevel = self.hdl_toplevel
         if "." not in toplevel:
             toplevel = f"xil_defaultlib.{toplevel}"
-        
+
         elab_cmd = [self._vivado_exec_path("xelab"),
                     "-top", toplevel,
                     "-snapshot", "pybound_sim",
