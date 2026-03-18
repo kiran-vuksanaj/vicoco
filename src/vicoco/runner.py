@@ -39,7 +39,7 @@ class Vivado(Simulator):
     """
 
     supported_gpi_interfaces = {'verilog': ['xsi'], 'vhdl': ['xsi']}
-    LAUNCHING_MODULE = "cocotb_vivado"
+    LAUNCHING_MODULE = "vicoco"
 
     def __init__(
             self,
@@ -280,7 +280,7 @@ class Vivado(Simulator):
             }
 
         compile_exec = language_compiler[language]
-        cmd = [compile_exec, '--incr', '--relax']
+        cmd = [compile_exec, '--incr', '--relax', '-work','xil_defaultlib']
         if prj:
             cmd += ['-prj']
         elif src_file.suffix == '.sv':
@@ -399,7 +399,7 @@ class Vivado(Simulator):
         with open(file_name,'w',encoding="utf-8") as f:
             f.write(file_text)
 
-        self.elab_modules.append("work.cocotb_vivado_dump")
+        self.elab_modules.append("xil_defaultlib.cocotb_vivado_dump")
         self.sources.append(file_name)
 
     def _define_args(self) -> Sequence[str]:
@@ -452,8 +452,12 @@ class Vivado(Simulator):
         define_args = self._define_args()
         param_args = self._get_parameter_options(self.parameters)
 
+        toplevel = self.hdl_toplevel
+        if "." not in toplevel:
+            toplevel = f"xil_defaultlib.{toplevel}"
+        
         elab_cmd = [self._vivado_exec_path("xelab"),
-                    "-top", self.hdl_toplevel,
+                    "-top", toplevel,
                     "-snapshot", "pybound_sim",
                     *self._get_include_options(self.includes),
                     *define_args,
