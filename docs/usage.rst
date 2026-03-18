@@ -26,7 +26,7 @@ Vicoco is launched using the `cocotb Python runner`_, so if you
 .. toctree::
    :maxdepth: 2
    :name: howto-section
-   :caption: Vicoco Usage
+   :caption: Contents: Vicoco Usage
 
    self
    vivado_ip_usage
