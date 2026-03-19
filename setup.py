@@ -4,8 +4,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='vicoco',
-    version='v0.0.3',
-    description='Vivado xsim compatibility',
+    version='v0.0.4dev0',
+    description='Vivado xsim compatibility for cocotb',
     author='Kiran Vuksanaj',
     author_email='kiranv@mit.edu',
     package_dir={"":"src"},
