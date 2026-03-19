@@ -18,6 +18,7 @@ async def barebones_clock(dut):
     cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
     await Timer(3000,'ns')
 
+@pytest.mark.slow
 def test_blockdiagram_tb():
     tb_name = "test_blockdiagram"
 
