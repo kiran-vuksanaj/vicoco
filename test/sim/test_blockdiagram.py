@@ -16,7 +16,6 @@ import pytest
 @cocotb.test()
 async def barebones_clock(dut):
     cocotb.start_soon( Clock(dut.clk,10,units='ns').start() )
-    dir(dut)
     await Timer(3000,'ns')
 
 def test_blockdiagram_tb():
@@ -24,18 +23,14 @@ def test_blockdiagram_tb():
 
     proj_path = Path(__file__).resolve().parent
 
-    sample_bd = os.getenv("SAMPLE_BD",None)
-    sample_bd_wrapper = os.getenv("SAMPLE_BD_WRAPPER",None)
-
     sources = []
     sim = "vivado"
     hdl_toplevel_lang = "verilog"
-    toplevel = "xil_defaultlib.design_1"
+    toplevel = "design_1"
     runner = get_runner(sim)
 
     runner.add_export_simulation_tcl(
         tcl_file = proj_path.parent / "tcl" / "design_1.tcl",
-        mode="tcl",
         result_file="myproj/project_1.xpr",
         force_export=True
     )
@@ -45,7 +40,7 @@ def test_blockdiagram_tb():
         hdl_toplevel=toplevel,
         always=True,
         timescale = ('1ns','1ps'),
-        clean=True,
+        # clean=True,
         waves=True)
     runner.test(
         hdl_toplevel=toplevel,

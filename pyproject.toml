@@ -64,3 +64,9 @@ known-third-party = [
     "pytest",
 ]
 required-imports = ["from __future__ import annotations"]
+
+
+[pytest]
+markers = [
+    "slow"
+]
