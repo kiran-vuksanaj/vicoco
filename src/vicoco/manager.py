@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 
 # minimally adapted from themperek/cocotb-vivado ; thank you!!
+from __future__ import annotations
 
-from vicoco.interface_xsim import XSimInterface, XSI_XSimInterface
-# from vicoco.tcl_loader import Tcl_XSimInterface
+from vicoco.interface_xsim import XSI_XSimInterface, XSimInterface
 
-from vicoco.vivado_handles import XsimRootHandle, XsiPortHandle, TimedCbClosure, ValueChangeCbClosure, ReadWriteCbClosure, ReadOnlyCbClosure
+from vicoco.tcl_loader import Tcl_XSimInterface
+from vicoco.vivado_handles import (
+    ReadOnlyCbClosure,
+    ReadWriteCbClosure,
+    TimedCbClosure,
+    ValueChangeCbClosure,
+    XsimRootHandle,
+    XsiPortHandle,
+)
+
 
 class XSimManager:
 
@@ -14,7 +23,7 @@ class XSimManager:
     """
 
     _inst = None
-    
+
     def __init__(self, mode):
 
         interface_type = XSimInterface
@@ -29,7 +38,7 @@ class XSimManager:
             0:[]
         }
         self._vcqueue = []
-        
+
         self._readwrite_queue = []
         self._readonly_queue = []
 
@@ -53,7 +62,7 @@ class XSimManager:
                 self._vcqueue.remove(vc)
 
         # return something_ran
-        
+
     def _any_callbacks_primed(self,callback_list):
         for callback in callback_list:
             if callback.cb is not None:
@@ -73,14 +82,14 @@ class XSimManager:
             for cb in self._timerqueue[next_time]:
                 if cb is not None:
                     cb()
-            
+
             self._timerqueue.pop(next_time)
 
             self._attempt_valuechange_callbacks()
 
             if (not self.is_running):
                 break
-            
+
             while(self._readwrite_queue):
                 # release for readwrite phase, values will be set
                 # print(f"New RW cycle at time {next_time}")
@@ -107,17 +116,17 @@ class XSimManager:
 
             if (len(self._timerqueue) == 0):
                 continue
-            
+
             next_time = min(self._timerqueue.keys())
             while(not(self._any_callbacks_primed( self._timerqueue[next_time] ))):
                 self._timerqueue.pop(next_time)
                 next_time = min(self._timerqueue.keys())
-                
+
             time_to_run = next_time - self.get_sim_time()
             self._sim_advance(time_to_run)
             # print("NEW TIME STEP",next_time)
 
-        
+
     def get_root_handle(self):
         return XsimRootHandle(self)
 
@@ -128,7 +137,7 @@ class XSimManager:
             handle = XsiPortHandle(self,portname,port_info[portname][1])
             out[ portname ] = handle
         return out
-    
+
     def start_simulator(self):
         self.sim.launch_simulator()
         self.ports = self._init_port_handles( self.sim.list_port_names() )
@@ -144,7 +153,7 @@ class XSimManager:
             self._timerqueue[time_to_fire].append(ret)
         else:
             self._timerqueue[time_to_fire] = [ret]
-        
+
         return ret
 
     def register_vc_cb(self,handle,callback,edge,ud):
@@ -162,7 +171,7 @@ class XSimManager:
         closure = ReadOnlyCbClosure(callback,trigger)
         self._readonly_queue.append( closure )
         return closure
-        
+
 
     def get_sim_time(self):
         return self.time
