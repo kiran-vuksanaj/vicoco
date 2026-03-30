@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from vicoco.interface_xsim import XSI_XSimInterface, XSimInterface
 
-from vicoco.tcl_loader import Tcl_XSimInterface
+# from vicoco.tcl_loader import Tcl_XSimInterface
 from vicoco.vivado_handles import (
     ReadOnlyCbClosure,
     ReadWriteCbClosure,

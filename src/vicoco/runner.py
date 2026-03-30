@@ -543,8 +543,8 @@ class Vivado(Simulator):
             profiler_launch_args = ["-m", "cProfile","-o",profiler_result_filename]
         else:
             profiler_launch_args = []
-            
-        
+
+
         cmd = [
             ["python3", *profiler_launch_args, "-m", self.LAUNCHING_MODULE]
         ]
