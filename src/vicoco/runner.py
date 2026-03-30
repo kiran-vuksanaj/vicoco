@@ -538,8 +538,15 @@ class Vivado(Simulator):
         # bridge to cross: everything needs to become internalized to a module
         self._issue_test_warnings()
 
+        if self.env.get("VICOCO_PROFILER",None):
+            profiler_result_filename = str(self.build_dir / f'{self.hdl_toplevel}_profiler.log')
+            profiler_launch_args = ["-m", "cProfile","-o",profiler_result_filename]
+        else:
+            profiler_launch_args = []
+            
+        
         cmd = [
-            ["python3", "-m", self.LAUNCHING_MODULE]
+            ["python3", *profiler_launch_args, "-m", self.LAUNCHING_MODULE]
         ]
 
         # set environment for launching vicoco
