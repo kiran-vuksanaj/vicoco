@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
+import re
+
+import pexpect
 
 from vicoco.interface_xsim import XSimInterface
 
-import pexpect
-import re
-
-import logging
 
 class Tcl_XSimInterface(XSimInterface):
     def __init__(self):
@@ -21,7 +22,7 @@ class Tcl_XSimInterface(XSimInterface):
         Returns process to predictable state while passing a command and returning response
         """
         assert self._simproc is not None, "simulator not running"
-        
+
         prompt_text = "xsim%"
 
         self._simproc.sendline(command_str)
@@ -37,7 +38,7 @@ class Tcl_XSimInterface(XSimInterface):
         return resp
 
 
-    
+
 
     def launch_simulator(self):
         # print("launch simulator")
@@ -97,7 +98,7 @@ class Tcl_XSimInterface(XSimInterface):
                 port_size = int(width_hi) - int(width_lo)
 
             portmap[full_portname] = (i,port_size)
-                
+
 
         return portmap
 
@@ -105,7 +106,7 @@ class Tcl_XSimInterface(XSimInterface):
     def list_port_names(self):
         assert self._portmap is not None
         return self._portmap
-    
+
     def advance(self,steps):
         self._pass_command(f"run {steps} ps")
 

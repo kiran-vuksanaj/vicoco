@@ -1,5 +1,8 @@
-import os
+from __future__ import annotations
+
 import ctypes
+import os
+
 # import cocotb
 # heavily inspired by themperek/cocotb-vivado; thank you!!
 
@@ -37,12 +40,12 @@ class Xsi_Loader:
             self.toplevel_lang = 'verilog'
 
         self.handle = ctypes.c_void_p(None)
-    
+
     def load_libraries(self):
 
         snapshot_name = os.getenv("VIVADO_SNAPSHOT_NAME")
 
-        design_so_file = "xsim.dir/{snapshot_name}/xsimk.so".format(snapshot_name=snapshot_name)
+        design_so_file = f"xsim.dir/{snapshot_name}/xsimk.so"
 
         kernel_so_file = "libxv_simulator_kernel.so"
         self.kernel_lib = ctypes.CDLL(kernel_so_file)
@@ -61,7 +64,7 @@ class Xsi_Loader:
 
         # i dont really understand why this needs to be re-wrapped, and it concerns me
         self.handle = Xsi_H.xsiHandle( self.handle )
-        
+
         if trace:
             self.kernel_lib.xsi_trace_all( self.handle )
 
@@ -86,7 +89,7 @@ class Xsi_Loader:
             return array_type
         else:
             raise KeyError(f"Unknown toplevel language {self.toplevel_lang} (not verilog or vhdl)")
-        
+
     def xsi2binstr(self,val_array,port_size):
 
         ### val_ptr should be an array type
@@ -94,7 +97,7 @@ class Xsi_Loader:
         if (self.toplevel_lang == 'verilog'):
             for val in val_array:
 
-                binary_bits = list("{:032b}".format(val.aVal))
+                binary_bits = list(f"{val.aVal:032b}")
 
                 bVal = val.bVal
                 for i in range(32):
@@ -103,7 +106,7 @@ class Xsi_Loader:
                             binary_bits[31-i] = 'Z'
                         else:
                             binary_bits[31-i] = 'X'
-                
+
                 # prepend new section
 
                 output = ''.join(binary_bits) + output
@@ -113,7 +116,7 @@ class Xsi_Loader:
                 byte_val = ord(val)
                 binstr_char = VHDL_std_logic[byte_val]
                 output = output + binstr_char
-            
+
 
         # trim excess zeroes from the front
         output = output[-port_size:]
@@ -123,7 +126,7 @@ class Xsi_Loader:
         assert(len(binstr)==port_size)
         binstr = binstr.upper()
         memory_space = self.xsi_compliant_space_type(port_size)()
-        
+
         if (self.toplevel_lang == 'verilog'):
 
             for i in range(0,port_size,32):
@@ -151,7 +154,7 @@ class Xsi_Loader:
                 binstr_byteval = VHDL_binstr_to_std_logic[binstr_char]
                 memory_space[i] = binstr_byteval
             return memory_space
-                
+
 
 
     def get_value(self,port_number,port_size):
@@ -202,7 +205,7 @@ class Xsi_Loader:
         return port_size
 
 
-    
+
     # trace_all
     # get_error_info
     # isopen
@@ -230,7 +233,7 @@ class Xsi_H:
                 xsimDir = bytes(xsimDir,'utf-8')
 
             super().__init__(logFileName,wdbFileName,xsimDir)
-            
+
     p_xsi_setup_info = ctypes.POINTER(t_xsi_setup_info)
 
     class s_xsi_vlog_logicval(ctypes.Structure):
@@ -298,5 +301,5 @@ class Xsi_H:
             fn_header = lib_defines[key]
             lib_fn.argtypes = fn_header[0]
             lib_fn.restype = fn_header[1]
-        
+
 

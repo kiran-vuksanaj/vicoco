@@ -1,6 +1,8 @@
 # ********************************************************************
 # * These constants are used by cocotb 'main'
 # ********************************************************************
+from __future__ import annotations
+
 DRIVERS: int = 0
 ENUM: int = 1
 GENARRAY: int = 2
@@ -9,7 +11,7 @@ LOADS: int = 4
 LOGIC: int = 5
 LOGIC_ARRAY: int = 6
 MEMORY: int = 7
-MODULE: int = 8 
+MODULE: int = 8
 NETARRAY: int = 9
 OBJECTS: int = 10
 PACKAGE: int = 11

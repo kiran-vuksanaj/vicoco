@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # minimally adapted from themperek/cocotb-vivado ; thank you!!
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import (
+    Any,
+    Union,
+)
 
 import vicoco._gpi_enums as GPI_ENUMS
 
-import abc
-from collections.abc import Callable
-from typing import Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Type, Union, Any
-
 # from vicoco.gpi_emulation import gpi_cb_hdl, gpi_sim_hdl
 
-class XsimRootHandle():
+class XsimRootHandle:
     def __init__(self, mgr):
         self.mgr = mgr
 
@@ -41,7 +44,7 @@ class XsimRootHandle():
 
         return self.mgr.ports[name]
 
-class XsiPortHandle():
+class XsiPortHandle:
     def __init__(self, mgr, name, size):
         self.name = name
 
@@ -102,7 +105,7 @@ class XsiPortHandle():
         value = int(value,2)
         return value
 
-class CbClosure():
+class CbClosure:
     def __init__(self) -> None:
         self.cb: Union[Callable[[Any],None],None] = None
         self.ud: Any = None
@@ -131,7 +134,7 @@ class TimedCbClosure(CbClosure):
 class ValueChangeCbClosure(CbClosure):
 
     def __init__(self, handle, edge, cb, ud):
-        
+
         self.handle = handle
         self.cb = cb
         self.ud = ud
@@ -145,7 +148,7 @@ class ValueChangeCbClosure(CbClosure):
             self.previous_value = None
 
     def change_condition_satisfied(self):
-        
+
         try:
             current_value = self.handle.get_signal_val_int()
         except ValueError:
@@ -159,7 +162,7 @@ class ValueChangeCbClosure(CbClosure):
         else:
             # value change generic
             out = (current_value != self.previous_value and current_value is not None)
-        
+
         self.previous_value = current_value
 
         return out

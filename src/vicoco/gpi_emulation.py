@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-# restructured to match simulator.pyi in cocotb 2.0
-# note that unforunately this is a back-end API that
-# changes without notice
-
-from logging import Logger
-from typing import Any, Callable
-
 # from cocotb.handle import GPIDiscovery
 import abc
 import sys
 
+# restructured to match simulator.pyi in cocotb 2.0
+# note that unforunately this is a back-end API that
+# changes without notice
+from logging import Logger
+from typing import Any, Callable
+
+from vicoco._gpi_enums import *
+
 # minimally adapted from themperek/cocotb-vivado ; thank you!!
 from vicoco.manager import XSimManager
 
-from vicoco._gpi_enums import *
 
 class gpi_cb_hdl(abc.ABC):
     def deregister(self) -> None: ...
@@ -57,14 +57,14 @@ class gpi_sim_hdl(abc.ABC):
     def __ne__(self, other: object) -> bool: ...
     def __hash__(self) -> int: ...
 
-def get_precision() -> int: 
+def get_precision() -> int:
     # HACK TODO hardcoded to picosecond precision...
     return -12
 
-def get_root_handle(name: str | None) -> gpi_sim_hdl | None: 
+def get_root_handle(name: str | None) -> gpi_sim_hdl | None:
     return XSimManager.inst().get_root_handle()
 
-def get_sim_time() -> tuple[int, int]: 
+def get_sim_time() -> tuple[int, int]:
     time = XSimManager.inst().get_sim_time()
     return (0,time) # ? maybe?
 

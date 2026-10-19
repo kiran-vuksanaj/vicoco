@@ -12,7 +12,14 @@ from os import environ
 from pathlib import Path
 
 from cocotb_tools import runner
-from cocotb_tools.runner import VHDL, Runner, Verilog, _Tag, _ValueAndTag, _determine_file_type
+from cocotb_tools.runner import (
+    VHDL,
+    Runner,
+    Verilog,
+    _determine_file_type,
+    _Tag,
+    _ValueAndTag,
+)
 
 PathLike = os.PathLike[str]|str
 Command = list[str]
@@ -516,7 +523,7 @@ class Vivado(Runner):
                 ip_sources.append(str(source.value))
             else:
                 raise ValueError(
-                    f"Unknown file type: {str(source)} can't be compiled."
+                    f"Unknown file type: {source!s} can't be compiled."
                 )
 
 
@@ -592,12 +599,12 @@ def get_runner(simulator_name: str, **kwargs) -> Runner:
 
 
 # expansions to file tagging system
-    
+
 class VivadoIPDefinition(_Tag):
     """Tags source files to :meth:`Runner.build() <cocotb_tools.runner.Runner.build>` as Vivado IP definition files (.bd or .xci)"""
 
 _vivado_ip_extensions = (".bd",".xci")
-    
+
 def _determine_file_type_override(filename: PathLike) -> _Tag:
     ext = Path(filename).suffix
     if ext in _vivado_ip_extensions:
@@ -605,4 +612,4 @@ def _determine_file_type_override(filename: PathLike) -> _Tag:
     else:
         return _determine_file_type(filename)
 runner._determine_file_type = _determine_file_type_override
-    
+

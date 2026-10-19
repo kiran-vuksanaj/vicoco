@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import importlib
-import sys
-import os
 import inspect
+import sys
 
 from vicoco.manager import XSimManager
 
@@ -25,8 +25,10 @@ cocotb.simulator = gpi_emulation
 sys.modules["cocotb"] = cocotb
 _spec.loader.exec_module(cocotb)
 
-from pygpi.entry import load_entry
 from os import getenv
+
+from pygpi.entry import load_entry
+
 
 # derived from themperek's cocotb-vivado
 def load_cocotb() -> None:
@@ -46,11 +48,11 @@ def _initialize_simulator():
     launch_mode = getenv("XSIM_INTERFACE",'XSI')
     sim_manager = XSimManager.init(launch_mode)
     sim_manager.start_simulator()
-    
+
     load_cocotb()
 
     sim_manager.run()
-    
+
 
 
 import sys

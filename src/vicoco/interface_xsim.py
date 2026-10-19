@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import abc
+
 from vicoco.xsi_loader import Xsi_Loader
+
 
 class XSimInterface(abc.ABC):
 
@@ -15,7 +18,7 @@ class XSimInterface(abc.ABC):
     @abc.abstractmethod
     def launch_simulator(self):
         raise NotImplementedError()
-    
+
     @abc.abstractmethod
     def stop_simulator(self):
         raise NotImplementedError()
@@ -38,8 +41,8 @@ class XSimInterface(abc.ABC):
 
     @abc.abstractmethod
     def sim_getsimtime(self):
-        raise NotImplementedError()        
-    
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def sim_isactive(self):
         raise NotImplementedError()
@@ -48,7 +51,7 @@ class XSI_XSimInterface(XSimInterface):
     """
     Implementation of interface interactions using the Xsi_Loader class
     """
-    
+
     def launch_simulator(self):
         self._loader = Xsi_Loader()
         self._loader.open_handle(None,"test.wdb")
@@ -95,7 +98,7 @@ class XSI_XSimInterface(XSimInterface):
 
     def sim_getsimtime(self):
         return self._loader.get_time()
-        
+
     def sim_isactive(self):
         return self._active
 
@@ -111,6 +114,6 @@ def tiny_testbench():
     xsim.sim_setvalue("clk",1)
     xsim.advance(300)
     print(xsim.sim_getvalue("clk"))
-    
+
 if __name__ == "__main__":
     tiny_testbench()
