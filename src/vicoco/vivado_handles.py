@@ -108,7 +108,13 @@ class CbClosure():
 
     def __call__(self):
         if self.cb is not None:
-            self.cb(self.ud)
+            # as of cocotb 2.1, user data is no longer passed.
+            # the front half of this is hit in cocotb 2.0,
+            # and the back half is hit in cocotb 2.1+.
+            if self.ud is not None:
+                self.cb(self.ud)
+            else:
+                self.cb()
 
     def deregister(self):
         # print(f"CALLBACK DEREGISTERED! {self}")

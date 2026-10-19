@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 # from cocotb.handle import GPIDiscovery
 import abc
+import sys
 
 # minimally adapted from themperek/cocotb-vivado ; thank you!!
 from vicoco.manager import XSimManager
@@ -113,22 +114,22 @@ def log_msg(*args, **kwargs):
     raise Exception("Nuh Uh")
 
 
-def register_timed_callback(t, cb, ud):
+def register_timed_callback(t, cb, ud=None):
     return XSimManager.inst().register_timed_cb(t,cb,ud)
 
 
-def register_value_change_callback(handle,callback,edge,ud):
+def register_value_change_callback(handle,callback,edge,ud=None):
     return XSimManager.inst().register_vc_cb(handle,callback,edge,ud)
 
-def register_readonly_callback(cb,ud):
+def register_readonly_callback(cb,ud=None):
     # print("READONLY CALLBACK!")
     return XSimManager.inst().register_readonly_cb(cb,ud)
 
 
-def register_nextstep_callback(cb,ud):
+def register_nextstep_callback(cb,ud=None):
     return register_timed_callback(1,cb,ud)
 
-def register_rwsynch_callback(cb, ud):
+def register_rwsynch_callback(cb, ud=None):
     # print("registering rwSync callback")
     # return register_timed_callback(0,cb,ud)
     return XSimManager.inst().register_readwrite_cb(cb,ud)
@@ -142,6 +143,14 @@ def log_level(level):
     # TODO skipping 4 now
     pass
 
+# based on cocotb-vivado updates for 2.1
+def get_simulator_args():
+    return list(sys.argv)
+
+def root_iterate():
+    # Return nothing so cocotb falls back to get_root_handle(): XSim
+    # exposes a single top, which get_root_handle already yields.
+    return []
 
 def gpi_has_registered_impl():
     return 1
