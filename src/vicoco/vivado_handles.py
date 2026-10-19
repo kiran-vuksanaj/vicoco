@@ -6,6 +6,7 @@ import vicoco._gpi_enums as GPI_ENUMS
 import abc
 from collections.abc import Callable
 from typing import Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Type, Union, Any
+
 # from vicoco.gpi_emulation import gpi_cb_hdl, gpi_sim_hdl
 
 class XsimRootHandle():
@@ -130,9 +131,11 @@ class TimedCbClosure(CbClosure):
 class ValueChangeCbClosure(CbClosure):
 
     def __init__(self, handle, edge, cb, ud):
+        
         self.handle = handle
         self.cb = cb
         self.ud = ud
+        assert edge in {GPI_ENUMS.RISING,GPI_ENUMS.FALLING,GPI_ENUMS.VALUE_CHANGE}
         self.edge = edge
 
         # self.previous_value = 0
@@ -142,18 +145,23 @@ class ValueChangeCbClosure(CbClosure):
             self.previous_value = None
 
     def change_condition_satisfied(self):
+        
         try:
             current_value = self.handle.get_signal_val_int()
         except ValueError:
             current_value = None
 
         # print(f"Change condition satisfied? {self.previous_value}, {current_value}, {self.handle}, {self.edge}")
-        if self.edge == 1:
+        if self.edge == GPI_ENUMS.RISING:
             out = (current_value == 1) and (self.previous_value == 0 or self.previous_value is None)
-        else:
+        elif self.edge == GPI_ENUMS.FALLING:
             out = (current_value == 0) and (self.previous_value == 1 or self.previous_value is None)
-
+        else:
+            # value change generic
+            out = (current_value != self.previous_value and current_value is not None)
+        
         self.previous_value = current_value
+
         return out
 
 class ReadWriteCbClosure(CbClosure):
