@@ -1,22 +1,87 @@
 #!/usr/bin/env python3
 import cocotb
-from cocotb.triggers import Timer, RisingEdge, ClockCycles, ReadOnly
+from cocotb.triggers import Timer, RisingEdge, ClockCycles, ReadOnly, Edge
 from cocotb.clock import Clock
 try:
     import pytest
 except ImportError:
     pass
 
-@cocotb.test()
+async def match_delay():
+    await Timer(0.1,'ns')
+
+async def match_delay_on_clock(clk):
+    while True:
+        await RisingEdge(clk)
+        cocotb.start_soon( match_delay() )
+
+@cocotb.test(skip=True)
 async def clocks_only(dut):
+
+    dut.ena.value = 1
+    dut.enb.value = 1
+
+    cocotb.start_soon( Clock(dut.clka, 12,unit='ns').start() )
+    cocotb.start_soon( Clock(dut.clkb, 12, unit='ns').start() )
+
+    cocotb.start_soon(match_delay_on_clock(dut.clka))
+    cocotb.start_soon(match_delay_on_clock(dut.clkb))
+
+    await Timer(200,unit='ns')
+
+
+    
+async def port_a(dut):
+    dut.wea.value = 1
+    await ClockCycles(dut.clka,2)
+    dut.addra.value = 0x42
+    dut.dina.value = 0xAB
+    await ClockCycles(dut.clka,1)
+    dut.addra.value = 0x43
+    dut.dina.value = 0xCD
+    await ClockCycles(dut.clka,3)
+    await ReadOnly()
+    assert dut.douta.value == 0xCD
+    await Edge(dut.doutb)
+    dut._log.info(f"doutb {dut.doutb.value}")
+
+async def port_b(dut):
+    dut.web.value = 0
+    await ClockCycles(dut.clkb,5)
+    dut.addrb.value = 0x42
+    await ClockCycles(dut.clkb,1)
+    dut.addrb.value = 0x43
+    await ClockCycles(dut.clkb,2)
+    # the IP has a delay built into it
+    dut._log.info(f"doutb {dut.doutb.value.to_unsigned():x}")
+    await ReadOnly()
+    dut._log.info(f"doutb {dut.doutb.value.to_unsigned():x}")
+    assert dut.doutb.value == 0xAB
+    await ClockCycles(dut.clkb,1)
+    dut._log.info(f"doutb {dut.doutb.value.to_unsigned():x}")
+    await ReadOnly()
+    dut._log.info(f"doutb {dut.doutb.value.to_unsigned():x}")
+    assert dut.doutb.value == 0xCD
+    
+@cocotb.test()
+async def value_io(dut):
 
     dut.ena.value = 1
     dut.enb.value = 1
 
     cocotb.start_soon( Clock(dut.clka, 10,unit='ns').start() )
     cocotb.start_soon( Clock(dut.clkb, 12, unit='ns').start() )
+    cocotb.start_soon(match_delay_on_clock(dut.clka))
+    cocotb.start_soon(match_delay_on_clock(dut.clkb))
 
-    await Timer(200,unit='ns')
+    a = cocotb.start_soon( port_b(dut) )
+    b = cocotb.start_soon( port_a(dut) )
+
+    await cocotb.triggers.gather(a,b)
+
+    
+
+    
 
 
 from vicoco.runner import get_runner
