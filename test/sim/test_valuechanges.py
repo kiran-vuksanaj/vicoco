@@ -38,7 +38,7 @@ async def only_clockedge(dut):
     dut.rst.value = 1
     dut.incr_in.value = 0
     dut.secondary_in.value = 0
-    # await ReadOnly()
+    await ReadOnly()
     dut._log.info(f"Clock value: {dut.clk.value}")
     await ClockCycles(dut.clk,2)
     dut._log.info(f"Clock value: {dut.clk.value}")
@@ -69,6 +69,7 @@ def test_completetb():
     hdl_toplevel_lang = "verilog"
     toplevel = "valuechanger"
     parameters = {"SLOW_DEPTH":5}
+    # parameters = {}
     runner = get_runner(sim)
 
 
