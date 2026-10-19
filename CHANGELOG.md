@@ -1,3 +1,10 @@
+v0.0.4dev0 - 2025-03-18
+
+* Intended as final release intended for use with cocotb 1.9.2.
+* Introduced runner.add\_simulation\_export\_tcl() for registering TCL scripts and resulting exported simulations as sources for cocotb tests.
+* Moved vicoco.vivado_runner to vicoco.runner. Either library name can be used to import `get_runner`. 
+* General refactoring of the Python runner class, proper docstrings etc.
+
 v0.0.3 - 2025-11-21
 
 Improvements/stabilizations for the vivado\_runner class. Stable version for 6.205 lab-bc machines.

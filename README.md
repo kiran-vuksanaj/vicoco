@@ -2,6 +2,13 @@
 
 Following closely in the footsteps of themperek's [cocotb-vivado](github.com/themperek/cocotb-vivado)
 
+### License
+
+Copyright 2026 Kiran Vuksanaj
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
 ### Getting things running
 * make sure you have Python installed in such a way that libpython / the `<Python.h>` file exists; from `apt`, this might look like installing `python3-dev`. If you have cocotb running, this should already be handled.

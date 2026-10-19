@@ -4,7 +4,7 @@ from cocotb.triggers import Timer
 
 from pathlib import Path
 # from cocotb.runner import get_runner
-from vicoco.vivado_runner import get_runner
+from vicoco.runner import get_runner
 import os
 
 from cocotb.clock import Clock
@@ -47,7 +47,10 @@ def test_cordictb():
     hdl_toplevel_lang = "verilog"
     toplevel = "cordic_wrap"
 
-    xilinx_root = "/tools/Xilinx/2025.1/Vivado"
+    xilinx_root = {
+        "2025.1":"/tools/Xilinx/2025.1/Vivado",
+        "2024.2":"/tools/Xilinx/Vivado/2024.2"
+        }[vivado_version]
     runner = get_runner(sim,xilinx_root=xilinx_root, part_num="xc7s25csga324-1")
 
     runner.build(

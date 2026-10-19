@@ -7,7 +7,7 @@ from cocotb.triggers import Timer
 from pathlib import Path
 
 # from cocotb.runner import get_runner
-from vicoco.vivado_runner import get_runner
+from vicoco.runner import get_runner
 import os
 
 from cocotb.clock import Clock
@@ -33,7 +33,7 @@ def test_xpm_fifo_tb():
     sim = "vivado"
     hdl_toplevel_lang = "verilog"
     toplevel = "clockdomain_fifo"
-    runner = get_runner(sim, extra_global_modules=["work.glbl"])
+    runner = get_runner(sim, extra_global_modules=["xil_defaultlib.glbl"])
 
     runner.build(
         sources=sources,

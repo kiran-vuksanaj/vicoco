@@ -7,7 +7,7 @@ from cocotb.triggers import Timer
 from pathlib import Path
 
 # from cocotb.runner import get_runner
-from vicoco.vivado_runner import get_runner
+from vicoco.runner import get_runner
 import os
 
 from cocotb.clock import Clock
