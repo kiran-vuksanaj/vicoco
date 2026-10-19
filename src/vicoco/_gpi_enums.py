@@ -24,3 +24,7 @@ VALUE_CHANGE: int = 19
 RANGE_UP: int = 20
 RANGE_DOWN: int = 21
 RANGE_NO_DIR: int = 22
+
+# new in 2.1
+PACKED: int = 23
+FIXED_STRING: int = 24
