@@ -1,3 +1,7 @@
+v0.0.5 - 2026-10-19
+
+* Support for cocotb 2.x [2.0, 2.1]
+
 v0.0.4dev0 - 2025-03-18
 
 * Intended as final release intended for use with cocotb 1.9.2.
